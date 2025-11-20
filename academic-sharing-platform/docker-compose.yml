@@ -1,0 +1,144 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: academic
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  mongo:
+    image: mongo:6.0
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  minio:
+    image: minio/minio:RELEASE.2023-07-20T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "3001:3001"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MINIO_ENDPOINT: minio
+    depends_on:
+      - mysql
+      - minio
+
+  achievement-service:
+    build: ./services/achievement-service
+    ports:
+      - "3002:3002"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MINIO_ENDPOINT: minio
+    depends_on:
+      - mysql
+      - minio
+
+  file-service:
+    build: ./services/file-service
+    ports:
+      - "3005:3005"
+    environment:
+      MONGO_HOST: mongo
+      MINIO_ENDPOINT: minio
+    depends_on:
+      - mongo
+      - minio
+
+  # Java-based services (independent Spring Boot projects)
+  user-service-java:
+    build: ./services-java-modules/user-service
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql
+
+  achievement-service-java:
+    build: ./services-java-modules/achievement-service
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mysql
+
+  search-service-java:
+    build: ./services-java-modules/search-service
+    ports:
+      - "3003:3003"
+
+  data-sync-service-java:
+    build: ./services-java-modules/data-sync-service
+    ports:
+      - "3004:3004"
+
+  gateway-service:
+    build: ./services-java-modules/gateway-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - user-service-java
+      - achievement-service-java
+      - file-service-java
+
+  file-service-java:
+    build: ./services-java-modules/file-service
+    ports:
+      - "3005:3005"
+    depends_on:
+      - mongo
+
+  analytics-service-java:
+    build: ./services-java-modules/analytics-service
+    ports:
+      - "3006:3006"
+
+  system-service-java:
+    build: ./services-java-modules/system-service
+    ports:
+      - "3007:3007"
+
+  # placeholders for remaining services (they can be fleshed out later)
+  search-service:
+    build: ./services/search-service
+    ports:
+      - "3003:3003"
+
+  data-sync-service:
+    build: ./services/data-sync-service
+    ports:
+      - "3004:3004"
+
+  analytics-service:
+    build: ./services/analytics-service
+    ports:
+      - "3006:3006"
+
+  system-service:
+    build: ./services/system-service
+    ports:
+      - "3007:3007"
+
+volumes:
+  mysql-data:
+  mongo-data:
+  minio-data:
