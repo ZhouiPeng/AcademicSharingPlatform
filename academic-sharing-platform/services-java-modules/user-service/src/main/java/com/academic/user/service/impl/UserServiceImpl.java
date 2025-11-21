@@ -8,6 +8,7 @@ import com.academic.user.service.UserService;
 @Service
 public class UserServiceImpl implements UserService {
 
+
     @Override
     public void registerNormal(UserDto dto) {
         System.out.println("user register stub: " + dto.getUsername());

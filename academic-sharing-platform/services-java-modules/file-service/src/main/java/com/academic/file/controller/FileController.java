@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/internal/files")
 public class FileController {
 
+
     private final FileService service;
 
     public FileController(FileService service) {

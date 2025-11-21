@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: analytics-service
+server:
+  port: 8084
+
+achievement:
+  service:
+    url: http://localhost:8082

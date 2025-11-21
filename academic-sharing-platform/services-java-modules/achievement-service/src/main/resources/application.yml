@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: achievement-service
+server:
+  port: 8082
+
+# URL of user service used by UserClient
+user:
+  service:
+    url: http://localhost:8081

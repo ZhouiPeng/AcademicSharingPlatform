@@ -10,7 +10,8 @@ public class AchievementServiceClient {
     private final WebClient webClient;
 
     public AchievementServiceClient(WebClient.Builder builder) {
-        this.webClient = builder.baseUrl("http://achievement-service-java:3002").build();
+        // Local development uses localhost:8082 for achievement-service
+        this.webClient = builder.baseUrl("http://localhost:8082").build();
     }
 
     public String createAchievement(String jsonPayload) {

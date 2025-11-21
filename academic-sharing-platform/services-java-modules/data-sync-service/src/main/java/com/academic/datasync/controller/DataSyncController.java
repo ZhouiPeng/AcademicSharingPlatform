@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/sync")
 public class DataSyncController {
 
+
     private final DataSyncService service;
 
     public DataSyncController(DataSyncService service) {

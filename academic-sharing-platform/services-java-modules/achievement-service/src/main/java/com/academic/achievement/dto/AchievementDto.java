@@ -1,7 +1,6 @@
 package com.academic.achievement.dto;
 
 public class AchievementDto {
-
     private String id;
     private String title;
 

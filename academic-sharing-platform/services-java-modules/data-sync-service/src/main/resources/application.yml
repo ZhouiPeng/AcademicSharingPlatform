@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: data-sync-service
+server:
+  port: 8086
+
+achievement:
+  service:
+    url: http://localhost:8082

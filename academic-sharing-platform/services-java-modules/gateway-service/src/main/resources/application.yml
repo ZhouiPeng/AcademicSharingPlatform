@@ -1,19 +1,29 @@
-server:
-  port: 8080
-
 spring:
+  application:
+    name: gateway-service
   cloud:
     gateway:
       routes:
         - id: user-service
-          uri: http://user-service-java:3001
+          uri: http://localhost:8081
           predicates:
             - Path=/api/users/**
         - id: achievement-service
-          uri: http://achievement-service-java:3002
+          uri: http://localhost:8082
           predicates:
             - Path=/api/achievements/**
         - id: file-service
-          uri: http://file-service-java:3005
+          uri: http://localhost:8083
           predicates:
             - Path=/internal/files/**
+
+server:
+  port: 8080
+
+user:
+  service:
+    url: http://localhost:8081
+
+achievement:
+  service:
+    url: http://localhost:8082
