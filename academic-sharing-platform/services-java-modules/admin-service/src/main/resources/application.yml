@@ -3,3 +3,8 @@ spring:
     name: admin-service
 server:
   port: 8085
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui/index.html

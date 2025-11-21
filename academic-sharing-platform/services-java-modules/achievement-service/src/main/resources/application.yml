@@ -8,3 +8,8 @@ server:
 user:
   service:
     url: http://localhost:8081
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui/index.html

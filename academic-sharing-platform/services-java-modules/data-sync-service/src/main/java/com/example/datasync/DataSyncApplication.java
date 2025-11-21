@@ -1,11 +1,7 @@
+// Disabled duplicate main class to avoid multiple Spring Boot entry points.
+// The canonical application class is `com.academic.datasync.DataSyncApplication`.
 package com.example.datasync;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
 public class DataSyncApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(DataSyncApplication.class, args);
-    }
+    // placeholder
 }
