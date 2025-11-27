@@ -12,5 +12,4 @@ public class FileUploadDto {
     private String fileName;
     private long size;
     private String uploadTime;
-    private String storageUrl;
 }
