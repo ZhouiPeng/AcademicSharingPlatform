@@ -1,0 +1,13 @@
+server:
+  port: 8083
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui/index.html
+
+obs:
+  endpoint: https://obs.cn-north-4.myhuaweicloud.com
+  accessKey: "HPUANHTHSAOS2MUAC0VV"
+  secretKey: "lqD8YFk29Jt94v2KsYAdwMmaKpwF5yPMobapVdw8"
+  bucket: team13-file-management1
