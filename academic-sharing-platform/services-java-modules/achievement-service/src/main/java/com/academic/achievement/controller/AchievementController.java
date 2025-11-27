@@ -1,6 +1,8 @@
 package com.academic.achievement.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.academic.achievement.config.EnvironmentConfig;
 import com.academic.achievement.dto.AchievementDto;
 import com.academic.achievement.dto.CollectionFolderDto;
 import com.academic.achievement.service.AchievementService;
@@ -22,9 +25,11 @@ import com.academic.achievement.service.AchievementService;
 public class AchievementController {
 
     private final AchievementService service;
+    private final EnvironmentConfig envConfig;
 
-    public AchievementController(AchievementService service) {
+    public AchievementController(AchievementService service, EnvironmentConfig envConfig) {
         this.service = service;
+        this.envConfig = envConfig;
     }
 
     @PostMapping
@@ -121,5 +126,14 @@ public class AchievementController {
     @GetMapping("/search/sort")
     public ResponseEntity<List<AchievementDto>> searchSort(@RequestParam(required = false) String sort) {
         return ResponseEntity.ok(service.searchWithSort(sort));
+    }
+
+    @GetMapping("/env")
+    public ResponseEntity<Map<String, String>> env() {
+        Map<String, String> out = new HashMap<>();
+        out.put("app.env", envConfig.getAppEnv());
+        out.put("isDev", String.valueOf(envConfig.isDev()));
+        out.put("isProd", String.valueOf(envConfig.isProd()));
+        return ResponseEntity.ok(out);
     }
 }
