@@ -1,8 +1,14 @@
 package com.academic.achievement.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class CollectionFolderDto {
+    @JsonProperty(value = "folderId", access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
     private String id;
+
     private String name;
+
+    private String description;
 
     public String getId() {
         return id;
@@ -19,4 +25,13 @@ public class CollectionFolderDto {
     public void setName(String name) {
         this.name = name;
     }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 }
+

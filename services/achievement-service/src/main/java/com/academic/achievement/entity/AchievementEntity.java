@@ -14,9 +14,14 @@ public class AchievementEntity {
     @Id
     private String id;
     private String title;
-    private String authorId;
+    private String userId;
     private String fileId;
-    private String categories; // comma separated
+    private String categories; // comma separated (保留兼容)
+    private Integer type;
+    private String authors; // comma separated
+    private String abstractText;
+
+    private Long createdAt;
 
     @ManyToMany
     private Set<FolderEntity> folders = new HashSet<>();
@@ -38,11 +43,11 @@ public class AchievementEntity {
     }
 
     public String getAuthorId() {
-        return authorId;
+        return userId;
     }
 
     public void setAuthorId(String authorId) {
-        this.authorId = authorId;
+        this.userId = authorId;
     }
 
     public String getFileId() {
@@ -59,6 +64,38 @@ public class AchievementEntity {
 
     public void setCategories(String categories) {
         this.categories = categories;
+    }
+
+    public Integer getType() {
+        return type;
+    }
+
+    public void setType(Integer type) {
+        this.type = type;
+    }
+
+    public String getAuthors() {
+        return authors;
+    }
+
+    public void setAuthors(String authors) {
+        this.authors = authors;
+    }
+
+    public String getAbstractText() {
+        return abstractText;
+    }
+
+    public void setAbstractText(String abstractText) {
+        this.abstractText = abstractText;
+    }
+
+    public Long getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Long createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Set<FolderEntity> getFolders() {

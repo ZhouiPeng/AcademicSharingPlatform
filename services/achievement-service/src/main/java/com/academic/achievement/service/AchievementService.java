@@ -7,9 +7,8 @@ import com.academic.achievement.dto.CollectionFolderDto;
 
 public interface AchievementService {
 
-    void upload(AchievementDto dto);
+    String upload(AchievementDto dto);
 
-    void uploadUncertified(AchievementDto dto);
 
     AchievementDto get(String achId);
 

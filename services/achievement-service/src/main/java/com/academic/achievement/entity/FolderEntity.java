@@ -14,6 +14,7 @@ public class FolderEntity {
     @Id
     private String id;
     private String name;
+    private String description;
 
     @ManyToMany(mappedBy = "folders")
     private Set<AchievementEntity> achievements = new HashSet<>();
@@ -32,6 +33,14 @@ public class FolderEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public Set<AchievementEntity> getAchievements() {
