@@ -21,13 +21,42 @@ public class FileController {
     public ResponseEntity<ApiResponse<FileUploadDto>> upload(
             @RequestPart("uploaderId") String uploaderId,
             @RequestPart("file") MultipartFile file) {
-        ApiResponse<FileUploadDto> resp = ApiResponse.success(service.uploadFile(uploaderId, file));
-        return ResponseEntity.status(201).body(resp);
+        try {
+            ApiResponse<FileUploadDto> resp = ApiResponse.success(service.uploadFile(uploaderId, file));
+            return ResponseEntity.status(201).body(resp);
+        } catch (Exception e) {
+			return ResponseEntity.status(500).body(ApiResponse.error(500, "Upload failed: " + e.getMessage()));
+		}
     }
 
-    @GetMapping("/{fileId}/download")
-    public ResponseEntity<ApiResponse<FileDownloadDto>> download(@PathVariable String fileId) {
-        ApiResponse<FileDownloadDto> resp = ApiResponse.success(service.generateDownloadLink(fileId));
-        return ResponseEntity.status(200).body(resp);
-    }
+    @DeleteMapping("/delete/{fileId}")
+	public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String fileId) {
+		try {
+			service.deleteFile(fileId);
+			return ResponseEntity.ok(ApiResponse.success(null));
+		} catch (Exception e) {
+			return ResponseEntity.status(500).body(ApiResponse.error(500, "Delete failed: " + e.getMessage()));
+		}
+	}
+
+    @PutMapping("/modify/{fileId}")
+	public ResponseEntity<ApiResponse<FileCheckDto>> modify(@PathVariable String fileId) {
+		try {
+            ApiResponse<FileCheckDto> resp = ApiResponse.success(service.modifyFile(fileId));
+			return ResponseEntity.ok(resp);
+		} catch (Exception e) {
+			return ResponseEntity.status(500).body(ApiResponse.error(500, "Modify failed: " + e.getMessage()));
+		}
+	}
+
+
+    @GetMapping("/check/{fileId}")
+	public ResponseEntity<ApiResponse<FileCheckDto>> check(@PathVariable String fileId) {
+		try {
+            ApiResponse<FileCheckDto> resp = ApiResponse.success(service.checkFile(fileId));
+			return ResponseEntity.ok(resp);
+		} catch (Exception e) {
+			return ResponseEntity.status(500).body(ApiResponse.error(500, "Check failed: " + e.getMessage()));
+		}
+	}
 }

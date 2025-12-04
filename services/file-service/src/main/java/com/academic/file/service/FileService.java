@@ -5,7 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface FileService {
     FileUploadDto uploadFile(String uploaderId, MultipartFile file);
-    FileCheckDto checkFile(String fileId);
-    FileDownloadDto generateDownloadLink(String fileId);
     void deleteFile(String fileId);
+    FileCheckDto modifyFile(String fileId);
+    FileCheckDto checkFile(String fileId);
 }

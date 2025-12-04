@@ -28,20 +28,13 @@ public class FileServiceImpl implements FileService {
         String fileName = file == null ? null : file.getOriginalFilename();
         long size = file.getSize();
         String uploadTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-
-        // build object key, keep original extension if present
-        String ext = "";
-        if (fileName != null && fileName.contains(".")) {
-            ext = fileName.substring(fileName.lastIndexOf('.'));
-        }
-        String url = null;
         try {
-            url = obsClientService.uploadPdf(file);
+            obsClientService.uploadPdf(file, fileName);
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload to OBS", e);
         }
 
-        FileUploadDto dto = new FileUploadDto(fileId, fileName, size, uploadTime, url);
+        FileUploadDto dto = new FileUploadDto(fileId, fileName, size, uploadTime);
         return dto;
     }
 
@@ -56,8 +49,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public FileDownloadDto generateDownloadLink(String fileId) {
-        String downloadUrl = "http://files.local/download/" + fileId;
-        return new FileDownloadDto(null, 0, downloadUrl);
+    public FileCheckDto modifyFile(String fileId) {
+        return null;
     }
 }
