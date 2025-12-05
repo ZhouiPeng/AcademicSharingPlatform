@@ -2,12 +2,25 @@ package com.academic.achievement.dto;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class AchievementDto {
+    @JsonProperty("achievementId")
     private String id;
+
+    private String userId; // 提交者ID，接口字段名为 userId
+
     private String title;
-    private String authorId;
+
+    private Integer type; // achievementType
+
+    private List<String> authors;
+
+    @JsonProperty("abstract")
+    private String abstractText;
+
     private String fileId; // 存储到 File Service 的文件标识
-    private List<String> categories;
+    private Long createdAt;
 
     public String getId() {
         return id;
@@ -15,6 +28,14 @@ public class AchievementDto {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public String getTitle() {
@@ -25,12 +46,28 @@ public class AchievementDto {
         this.title = title;
     }
 
-    public String getAuthorId() {
-        return authorId;
+    public Integer getType() {
+        return type;
     }
 
-    public void setAuthorId(String authorId) {
-        this.authorId = authorId;
+    public void setType(Integer type) {
+        this.type = type;
+    }
+
+    public List<String> getAuthors() {
+        return authors;
+    }
+
+    public void setAuthors(List<String> authors) {
+        this.authors = authors;
+    }
+
+    public String getAbstractText() {
+        return abstractText;
+    }
+
+    public void setAbstractText(String abstractText) {
+        this.abstractText = abstractText;
     }
 
     public String getFileId() {
@@ -41,11 +78,11 @@ public class AchievementDto {
         this.fileId = fileId;
     }
 
-    public List<String> getCategories() {
-        return categories;
+    public Long getCreatedAt() {
+        return createdAt;
     }
 
-    public void setCategories(List<String> categories) {
-        this.categories = categories;
+    public void setCreatedAt(Long createdAt) {
+        this.createdAt = createdAt;
     }
 }
