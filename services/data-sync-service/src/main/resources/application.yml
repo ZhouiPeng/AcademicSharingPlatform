@@ -7,6 +7,9 @@ server:
 achievement:
   service:
     url: http://localhost:8082
+file:
+  service:
+    url: http://localhost:8083
 
 springdoc:
   swagger-ui:
