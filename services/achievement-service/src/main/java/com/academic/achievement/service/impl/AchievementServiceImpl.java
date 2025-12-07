@@ -27,17 +27,14 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public void upload(AchievementDto dto) {
+    public String upload(AchievementDto dto) {
         AchievementEntity e = toEntity(dto);
         if (e.getId() == null || e.getId().isEmpty()) e.setId("ach-" + System.currentTimeMillis());
+        if (e.getCreatedAt() == null) e.setCreatedAt(System.currentTimeMillis());
         achievementRepository.save(e);
+        return e.getId();
     }
 
-    @Override
-    public void uploadUncertified(AchievementDto dto) {
-        if (dto.getAuthorId() == null) dto.setAuthorId("uncertified");
-        upload(dto);
-    }
 
     @Override
     public AchievementDto get(String achId) {
@@ -51,9 +48,11 @@ public class AchievementServiceImpl implements AchievementService {
         if (opt.isEmpty()) return;
         AchievementEntity e = opt.get();
         if (dto.getTitle() != null) e.setTitle(dto.getTitle());
-        if (dto.getAuthorId() != null) e.setAuthorId(dto.getAuthorId());
+        if (dto.getUserId() != null) e.setAuthorId(dto.getUserId());
         if (dto.getFileId() != null) e.setFileId(dto.getFileId());
-        if (dto.getCategories() != null) e.setCategories(String.join(",", dto.getCategories()));
+        if (dto.getAuthors() != null) e.setAuthors(String.join(",", dto.getAuthors()));
+        if (dto.getType() != null) e.setType(dto.getType());
+        if (dto.getAbstractText() != null) e.setAbstractText(dto.getAbstractText());
         achievementRepository.save(e);
     }
 
@@ -64,7 +63,7 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     public List<AchievementDto> listByAuthor(String authorId) {
-        return achievementRepository.findByAuthorId(authorId).stream().map(this::toDto).collect(Collectors.toList());
+        return achievementRepository.findByUserId(authorId).stream().map(this::toDto).collect(Collectors.toList());
     }
 
     @Override
@@ -78,10 +77,12 @@ public class AchievementServiceImpl implements AchievementService {
         if (dto.getId() == null || dto.getId().isEmpty()) f.setId("folder-" + System.currentTimeMillis());
         else f.setId(dto.getId());
         f.setName(dto.getName());
+        f.setDescription(dto.getDescription());
         FolderEntity saved = folderRepository.save(f);
         CollectionFolderDto out = new CollectionFolderDto();
         out.setId(saved.getId());
         out.setName(saved.getName());
+        out.setDescription(saved.getDescription());
         return out;
     }
 
@@ -118,6 +119,7 @@ public class AchievementServiceImpl implements AchievementService {
             CollectionFolderDto dto = new CollectionFolderDto();
             dto.setId(f.getId());
             dto.setName(f.getName());
+            dto.setDescription(f.getDescription());
             return dto;
         }).collect(Collectors.toList());
     }
@@ -154,9 +156,12 @@ public class AchievementServiceImpl implements AchievementService {
         AchievementDto d = new AchievementDto();
         d.setId(e.getId());
         d.setTitle(e.getTitle());
-        d.setAuthorId(e.getAuthorId());
+        d.setUserId(e.getAuthorId());
         d.setFileId(e.getFileId());
-        if (e.getCategories() != null && !e.getCategories().isEmpty()) d.setCategories(List.of(e.getCategories().split(",")));
+        if (e.getAuthors() != null && !e.getAuthors().isEmpty()) d.setAuthors(List.of(e.getAuthors().split(",")));
+        if (e.getType() != null) d.setType(e.getType());
+        d.setAbstractText(e.getAbstractText());
+        d.setCreatedAt(e.getCreatedAt());
         return d;
     }
 
@@ -164,9 +169,11 @@ public class AchievementServiceImpl implements AchievementService {
         AchievementEntity e = new AchievementEntity();
         e.setId(d.getId());
         e.setTitle(d.getTitle());
-        e.setAuthorId(d.getAuthorId());
+        e.setAuthorId(d.getUserId());
         e.setFileId(d.getFileId());
-        if (d.getCategories() != null && !d.getCategories().isEmpty()) e.setCategories(String.join(",", d.getCategories()));
+        if (d.getAuthors() != null && !d.getAuthors().isEmpty()) e.setAuthors(String.join(",", d.getAuthors()));
+        if (d.getType() != null) e.setType(d.getType());
+        e.setAbstractText(d.getAbstractText());
         return e;
     }
 }

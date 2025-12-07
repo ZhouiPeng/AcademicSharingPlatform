@@ -3,7 +3,6 @@ package com.academic.achievement.entity;
 import java.util.HashSet;
 import java.util.Set;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
@@ -12,12 +11,10 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "folders")
 public class FolderEntity {
-
     @Id
     private String id;
-
-    @Column(name = "name")
     private String name;
+    private String description;
 
     @ManyToMany(mappedBy = "folders")
     private Set<AchievementEntity> achievements = new HashSet<>();
@@ -36,6 +33,14 @@ public class FolderEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public Set<AchievementEntity> getAchievements() {

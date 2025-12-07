@@ -3,38 +3,27 @@ package com.academic.achievement.entity;
 import java.util.HashSet;
 import java.util.Set;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "achievements")
 public class AchievementEntity {
-
     @Id
     private String id;
-
     private String title;
-
-    @Column(name = "author_id")
-    private String authorId;
-
-    @Column(name = "file_id")
+    private String userId;
     private String fileId;
+    private String categories; // comma separated (保留兼容)
+    private Integer type;
+    private String authors; // comma separated
+    private String abstractText;
 
-    // store categories as comma separated values for simplicity
-    private String categories;
+    private Long createdAt;
 
     @ManyToMany
-    @JoinTable(
-        name = "folder_members",
-        joinColumns = @JoinColumn(name = "achievement_id"),
-        inverseJoinColumns = @JoinColumn(name = "folder_id")
-    )
     private Set<FolderEntity> folders = new HashSet<>();
 
     public String getId() {
@@ -54,11 +43,11 @@ public class AchievementEntity {
     }
 
     public String getAuthorId() {
-        return authorId;
+        return userId;
     }
 
     public void setAuthorId(String authorId) {
-        this.authorId = authorId;
+        this.userId = authorId;
     }
 
     public String getFileId() {
@@ -75,6 +64,38 @@ public class AchievementEntity {
 
     public void setCategories(String categories) {
         this.categories = categories;
+    }
+
+    public Integer getType() {
+        return type;
+    }
+
+    public void setType(Integer type) {
+        this.type = type;
+    }
+
+    public String getAuthors() {
+        return authors;
+    }
+
+    public void setAuthors(String authors) {
+        this.authors = authors;
+    }
+
+    public String getAbstractText() {
+        return abstractText;
+    }
+
+    public void setAbstractText(String abstractText) {
+        this.abstractText = abstractText;
+    }
+
+    public Long getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Long createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Set<FolderEntity> getFolders() {
