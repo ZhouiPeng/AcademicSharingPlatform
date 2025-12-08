@@ -5,16 +5,15 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import reactor.core.publisher.Mono;
 
@@ -37,7 +36,7 @@ public class FileServiceClient {
     public String checkFile(String fileId) {
         try {
             Mono<String> mono = webClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/internal/files/check/{fileId}").build(fileId))
+                    .uri(uriBuilder -> uriBuilder.path("/api/files/check/{fileId}").build(fileId))
                     .retrieve()
                     .bodyToMono(String.class);
             return mono.block();
@@ -60,11 +59,11 @@ public class FileServiceClient {
             };
 
             MultiValueMap<String, Object> parts = new org.springframework.util.LinkedMultiValueMap<>();
-            parts.add("uploaderId", uploaderId);
+            // uploaderId is expected as path variable by the server endpoint
             parts.add("file", resource);
 
             Mono<String> mono = webClient.post()
-                    .uri("/internal/files/upload")
+                    .uri(uriBuilder -> uriBuilder.path("/api/files/upload/{uploaderId}").build(uploaderId))
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(BodyInserters.fromMultipartData(parts))
                     .retrieve()
@@ -82,56 +81,69 @@ public class FileServiceClient {
      * happen in memory.
      */
     public String uploadFromUrl(String uploaderId, String pdfUrl, String filename) {
+        // Download into memory with try-with-resources to always close the remote stream
+        URL url;
         try {
-            // Stream remote PDF via InputStreamResource into file-service multipart endpoint
-            URL url = new URL(pdfUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            url = new URL(pdfUrl);
+        } catch (Exception e) {
+            log.error("Invalid PDF URL {}: {}", pdfUrl, e.getMessage());
+            return null;
+        }
+
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) url.openConnection();
             conn.setRequestProperty("User-Agent", "DataSyncService/1.0");
             conn.setConnectTimeout(15000);
-            conn.setReadTimeout(60000);
+            conn.setReadTimeout(120000); // increase read timeout to 120s
             conn.setInstanceFollowRedirects(true);
 
-            InputStream in = conn.getInputStream();
-            InputStreamResource resource = new InputStreamResource(in) {
-                @Override
-                public String getFilename() {
-                    return filename;
+            try (InputStream in = conn.getInputStream()) {
+                // Read fully into memory (small PDFs expected). This ensures the InputStream is closed.
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    baos.write(buffer, 0, read);
                 }
+                byte[] content = baos.toByteArray();
 
-                @Override
-                public long contentLength() {
-                    return -1; // unknown, let client use chunked transfer
-                }
-            };
+                ByteArrayResource resource = new ByteArrayResource(content) {
+                    @Override
+                    public String getFilename() {
+                        return filename;
+                    }
+                };
 
-            MultiValueMap<String, Object> parts = new org.springframework.util.LinkedMultiValueMap<>();
-            parts.add("uploaderId", uploaderId);
-            // also include filename as a separate form field in case the server expects it
-            parts.add("filename", filename);
-            parts.add("file", resource);
+                MultiValueMap<String, Object> parts = new org.springframework.util.LinkedMultiValueMap<>();
+                parts.add("file", resource);
 
-            // Use exchangeToMono to capture status and body for better diagnostics
-            return webClient.post()
-                    .uri("/internal/files/upload")
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(BodyInserters.fromMultipartData(parts))
-                    .exchangeToMono(response -> {
-                        int status = response.statusCode().value();
-                        if (response.statusCode().is2xxSuccessful()) {
-                            return response.bodyToMono(String.class);
-                        } else {
-                            return response.bodyToMono(String.class)
-                                    .defaultIfEmpty("")
-                                    .map(body -> {
-                                        log.error("file-service upload returned status {} body={}", status, body);
-                                        return null;
-                                    });
-                        }
-                    })
-                    .block(Duration.ofSeconds(120));
+                return webClient.post()
+                        .uri(uriBuilder -> uriBuilder.path("/api/files/upload/{uploaderId}").build(uploaderId))
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .body(BodyInserters.fromMultipartData(parts))
+                        .exchangeToMono(response -> {
+                            int status = response.statusCode().value();
+                            if (response.statusCode().is2xxSuccessful()) {
+                                return response.bodyToMono(String.class);
+                            } else {
+                                return response.bodyToMono(String.class)
+                                        .defaultIfEmpty("")
+                                        .map(body -> {
+                                            log.error("file-service upload returned status {} body={}", status, body);
+                                            return null;
+                                        });
+                            }
+                        })
+                        .block(Duration.ofSeconds(180));
+            }
         } catch (Exception e) {
             log.error("uploadFromUrl failed for url {} filename {}: {}", pdfUrl, filename, e.getMessage(), e);
             return null;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
 }

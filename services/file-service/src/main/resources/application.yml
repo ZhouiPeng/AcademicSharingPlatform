@@ -1,18 +1,13 @@
 server:
   port: 8083
-
-springdoc:
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui/index.html
-
-obs:
-  endpoint: https://obs.cn-north-4.myhuaweicloud.com
-  accessKey: "HPUANHTHSAOS2MUAC0VV"
-  secretKey: "lqD8YFk29Jt94v2KsYAdwMmaKpwF5yPMobapVdw8"
-  bucket: team13-file
+  tomcat:
+    max-swallow-size: 52428800 # 50MB
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   datasource:
     url: jdbc:mysql://124.70.81.32:3306/file_service?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
     username: ${DB_USERNAME:buaa}
@@ -24,3 +19,19 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+
+logging:
+  level:
+    root: INFO
+    com.academic.file: DEBUG
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui/index.html
+
+obs:
+  endpoint: https://obs.cn-north-4.myhuaweicloud.com
+  accessKey: "HPUANHTHSAOS2MUAC0VV"
+  secretKey: "lqD8YFk29Jt94v2KsYAdwMmaKpwF5yPMobapVdw8"
+  bucket: team13-file

@@ -1,8 +1,9 @@
 package com.academic.datasync;
 
-import com.academic.datasync.service.impl.DataSyncServiceImpl;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import com.academic.datasync.service.impl.DataSyncServiceImpl;
 
 public class ArxivIdUploadTest {
 
