@@ -146,4 +146,22 @@ public class FileServiceClient {
             }
         }
     }
+
+    /**
+     * Delete a file by id from file-service. Returns true if deletion
+     * succeeded.
+     */
+    public boolean deleteFile(String fileId) {
+        try {
+            return webClient.delete()
+                    .uri(uriBuilder -> uriBuilder.path("/api/files/delete/{fileId}").build(fileId))
+                    .retrieve()
+                    .toBodilessEntity()
+                    .map(resp -> resp.getStatusCode().is2xxSuccessful())
+                    .block(Duration.ofSeconds(10));
+        } catch (Exception e) {
+            log.error("deleteFile failed for {}: {}", fileId, e.getMessage());
+            return false;
+        }
+    }
 }

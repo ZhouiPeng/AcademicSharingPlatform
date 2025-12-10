@@ -8,27 +8,30 @@ import java.nio.charset.StandardCharsets; // 提供标准字符集常量（UTF-8
 import java.time.Duration; // 表示时间段，用于 WebClient 的超时
 import java.util.HashMap; // 提供 HashMap 实现
 import java.util.Iterator; // 用于遍历集合的迭代器
-import java.util.Map; // Map 接口，用于构建上报负载
-import java.util.regex.Matcher; // 正则匹配器
-import java.util.regex.Pattern; // 正则模式
+import java.util.List; // Map 接口，用于构建上报负载
+import java.util.Map; // 正则匹配器
+import java.util.regex.Matcher; // 正则模式
+import java.util.regex.Pattern;
 
-import javax.xml.parsers.DocumentBuilder; // DOM 解析器的构建器
-import javax.xml.parsers.DocumentBuilderFactory; // DOM DocumentBuilder 的工厂
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory; // DOM 解析器的构建器
 
-import org.slf4j.Logger; // 日志接口
-import org.slf4j.LoggerFactory; // 日志工厂，用于创建 Logger
-import org.springframework.stereotype.Service; // 标注当前类为 Spring 的 Service 组件
-import org.springframework.web.reactive.function.client.WebClient; // 非阻塞的 HTTP 客户端
-import org.w3c.dom.Document; // DOM Document 表示解析后的 XML 文档
-import org.w3c.dom.Element; // DOM Element 表示 XML 元素
-import org.w3c.dom.NodeList; // DOM NodeList 表示节点列表
-import org.xml.sax.InputSource; // 将字符串包装为 InputSource 供解析器使用
+import org.slf4j.Logger; // DOM DocumentBuilder 的工厂
+import org.slf4j.LoggerFactory; // 日志接口
+import org.springframework.beans.factory.annotation.Value; // 用于注入配置开关与列表
+import org.springframework.scheduling.annotation.Scheduled; // 用于计划任务注解
+import org.springframework.stereotype.Service; // 日志工厂，用于创建 Logger
+import org.springframework.web.reactive.function.client.WebClient; // 标注当前类为 Spring 的 Service 组件
+import org.w3c.dom.Document; // 非阻塞的 HTTP 客户端
+import org.w3c.dom.Element; // DOM Document 表示解析后的 XML 文档
+import org.w3c.dom.NodeList; // DOM Element 表示 XML 元素
+import org.xml.sax.InputSource; // DOM NodeList 表示节点列表
 
-import com.academic.datasync.client.AchievementServiceClient; // 成就服务客户端接口（注入）
-import com.academic.datasync.client.FileServiceClient; // 文件服务客户端接口（注入）
-import com.academic.datasync.service.DataSyncService; // DataSync 服务接口
-import com.fasterxml.jackson.databind.JsonNode; // Jackson 的 JsonNode，用于 JSON 树解析
-import com.fasterxml.jackson.databind.ObjectMapper; // Jackson 的 ObjectMapper，用于 JSON 序列化/反序列化
+import com.academic.datasync.client.AchievementServiceClient; // 将字符串包装为 InputSource 供解析器使用
+import com.academic.datasync.client.FileServiceClient; // 成就服务客户端接口（注入）
+import com.academic.datasync.service.DataSyncService; // 文件服务客户端接口（注入）
+import com.fasterxml.jackson.databind.JsonNode; // DataSync 服务接口
+import com.fasterxml.jackson.databind.ObjectMapper; // Jackson 的 JsonNode，用于 JSON 树解析
 
 @Service // 声明这是一个 Spring 管理的服务组件
 public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSyncService 接口
@@ -46,6 +49,16 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
     private final AchievementServiceClient achievementClient; // 注入用于上报成就的客户端
     // 文件服务客户端（注入）
     private final FileServiceClient fileServiceClient; // 注入用于上传文件的客户端
+
+    // 自动爬取相关配置（从 application.yml 注入）
+    @Value("${datasync.auto-enabled:false}")
+    private boolean autoCrawlEnabled; // 开关：为 true 时启用定时爬取
+
+    @Value("${datasync.auto-categories:cs.AI,cs.CL,cs.LG}")
+    private String autoCategories; // 逗号分隔的领域列表
+
+    @Value("${datasync.per-category-count:10}")
+    private int perCategoryCount; // 每个领域拉取数量，默认 10
 
     // 构造函数：通过 Spring 注入 WebClient.Builder 和客户端实现
     public DataSyncServiceImpl(WebClient.Builder builder,
@@ -67,189 +80,244 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
         this.fileServiceClient = fileServiceClient; // 保存注入的文件客户端引用
     }
 
+    /**
+     * Scheduled trigger: every day at 02:00 (server local time). Will run only
+     * when `datasync.auto-enabled` is true. Method delegates to
+     * `pullFromPublicDb()` which performs the multi-category crawl.
+     */
+    @Scheduled(cron = "0 0 2 * * *")
+    public void scheduledAutoCrawl() {
+        if (!autoCrawlEnabled) {
+            log.info("Auto-crawl disabled; skipping scheduled run");
+            return;
+        }
+        log.info("Scheduled auto-crawl triggered at 02:00");
+        try {
+            pullFromPublicDb();
+        } catch (Exception e) {
+            log.error("Scheduled auto-crawl failed: {}", e.getMessage(), e);
+        }
+    }
+
     @Override
     public void pullFromPublicDb() { // 从公共数据库（OpenAlex 和 arXiv）拉取并处理示例流程
         log.info("Starting pullFromPublicDb: fetching works from OpenAlex (demo limited)"); // 记录开始
         try {
-            // 调用 OpenAlex /works 获取开放获取的论文列表（演示：每页 20 条）
-            String body = webClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/works")
-                    .queryParam("filter", "is_oa:true")
-                    .queryParam("per-page", "20")
-                    .build())
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(Duration.ofSeconds(10)); // 阻塞等待最多 10 秒
+            // 对每个配置的领域执行 OpenAlex 拉取，每个领域拉取 `perCategoryCount` 条记录
+            String[] categories = autoCategories.split("\\s*,\\s*");
+            for (String cat : categories) {
+                try {
+                    log.info("Fetching OpenAlex works for category {} (limit={})", cat, perCategoryCount);
+                    String body = webClient.get()
+                            .uri(uriBuilder -> uriBuilder.path("/works")
+                            .queryParam("filter", "is_oa:true,concepts.display_name:" + cat)
+                            .queryParam("per-page", String.valueOf(perCategoryCount))
+                            .build())
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block(Duration.ofSeconds(10)); // 阻塞等待响应
 
-            // 如果返回为空则记录并退出
-            if (body == null) {
-                log.warn("OpenAlex returned empty body"); // 提示空响应
-                return; // 退出方法
-            }
-
-            // 将 JSON 字符串解析为树结构，并取出 results 数组
-            JsonNode root = objectMapper.readTree(body); // 解析 JSON
-            JsonNode results = root.get("results"); // 获取 results
-            if (results == null || !results.isArray()) {
-                log.warn("Unexpected OpenAlex response structure"); // 结构异常警告
-                return; // 退出
-            }
-
-            // 遍历每个 work（论文记录）进行处理
-            Iterator<JsonNode> it = results.elements(); // 获取迭代器
-            while (it.hasNext()) {
-                JsonNode work = it.next(); // 当前 work
-                // 从 work 中读取标题、OpenAlex id、DOI
-                String title = work.path("title").asText("untitled"); // 读取 title，默认 untitled
-                String openalexId = work.path("id").asText(); // 读取 id
-                String doi = work.path("doi").asText(null); // 读取 doi（可能为空）
-
-                String pdfUrl = extractPdfUrl(work); // 尝试从 work 中提取 PDF URL
-
-                // 生成回退的 fileId，如果没有找到真实文件则用 openalexId 或 doi
-                String fallbackFileId = openalexId.isEmpty() ? (doi != null ? doi : "oa-" + System.currentTimeMillis()) : openalexId; // 回退 ID
-                String finalFileId = fallbackFileId; // 最终使用的 fileId，可能被上传替换
-
-                // 如果找到了 PDF URL，则尝试下载并通过 file-service 上传
-                if (pdfUrl != null && !pdfUrl.isEmpty()) {
-                    try {
-                        log.info("Found PDF URL for work {}: {}", openalexId, pdfUrl); // 记录找到的 PDF URL
-
-                        // 尝试用标题生成文件名，若缺失则使用 fallbackFileId
-                        String rawTitle = title == null || title.isEmpty() ? finalFileId : title; // 选择原始名称
-                        String filename = sanitizeFilename(rawTitle); // 清理为安全文件名
-
-                        // 使用 fileServiceClient 从远程 URL 下载并上传（客户端实现负责下载/上传细节）
-                        String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename); // 上传并获取响应
-                        if (uploadResp != null) {
-                            try {
-                                JsonNode uploadRoot = objectMapper.readTree(uploadResp); // 解析上传响应 JSON
-                                JsonNode data = uploadRoot.path("data"); // 取 data 字段
-                                String uploadedFileId = data.path("fileId").asText(null); // 取 fileId
-                                if (uploadedFileId != null && !uploadedFileId.isEmpty()) {
-                                    finalFileId = uploadedFileId; // 使用上传返回的 fileId
-                                    log.info("Uploaded PDFfor work {} to file-service, fileId={}", openalexId, finalFileId); // 记录成功
-                                } else {
-                                    log.warn("Upload response did not contain fileId for work {}: {}", openalexId, uploadResp); // 警告：响应无 fileId
-                                }
-                            } catch (Exception pe) {
-                                log.warn("Failed to parse upload response for work {}: {}", openalexId, pe.getMessage()); // 上传响应解析失败
-                            }
-                        } else {
-                            log.warn("File upload returned null for work {}", openalexId); // 上传返回 null
-                        }
-                    } catch (Exception de) {
-                        log.warn("Failed to download or upload PDF for work {}: {}", openalexId, de.getMessage()); // 下载或上传失败
+                    if (body == null) {
+                        log.warn("OpenAlex returned empty body for category {}", cat);
+                        continue;
                     }
-                } else {
-                    log.info("No PDF URL found for work {}. Using fallback fileId {}", openalexId, finalFileId); // 未找到 PDF，使用回退 ID
-                }
 
-                // 构造成就上报的最小负载（示例）
-                Map<String, Object> achPayload = new HashMap<>(); // 新建 Map
-                achPayload.put("userId", "datasync"); // 填充 userId
-                achPayload.put("title", title); // 填充标题
-                achPayload.put("fileId", finalFileId); // 填充 fileId
+                    JsonNode root = objectMapper.readTree(body);
+                    JsonNode results = root.get("results");
+                    if (results == null || !results.isArray()) {
+                        log.warn("Unexpected OpenAlex response structure for category {}", cat);
+                        continue;
+                    }
 
-                // 将负载序列化为 JSON 并（演示）打印，实际调用被跳过
-                String jsonPayload = objectMapper.writeValueAsString(achPayload); // 转为 JSON 字符串
-                log.info("[TEST MODE] Skipping achievement service call for work {} -> payload={}", openalexId, jsonPayload); // 测试模式打印
-            }
+                    Iterator<JsonNode> it = results.elements();
+                    while (it.hasNext()) {
+                        JsonNode work = it.next();
+                        String title = work.path("title").asText("untitled");
+                        String openalexId = work.path("id").asText();
+                        String doi = work.path("doi").asText(null);
 
-            // OpenAlex 部分处理完成，接着尝试从 arXiv 拉取记录
-            int arxivCount = 20; // arXiv 拉取数量（与 OpenAlex 对应）
-            try {
-                // 默认查询示例：按类别查询（可修改为更具体的查询）
-                final String ARXIV_SEARCH_QUERY = "cat:cs.AI"; // 默认查询：CS.AI 类别
-                String encoded = ARXIV_SEARCH_QUERY;//encodeArxivQuery(ARXIV_SEARCH_QUERY); // 对查询进行 URL 编码
-                String path = "/api/query?search_query=" + encoded + "&max_results=" + arxivCount; // 构造 arXiv API 路径
-                log.info("arXiv request path: {}", path); // 记录请求路径
-                String arxivBody = arxivClient.get()
-                        .uri(path)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block(Duration.ofSeconds(40)); // 阻塞等待 arXiv 响应
-                log.info("arXiv response length: {}", arxivBody == null ? 0 : arxivBody.length()); // 记录响应长度
-                log.info("\n\n\narXiv response content: {}\n\n\n", arxivBody); // 记录完整响应内容（调试用）
-                if (arxivBody != null) {
-                    int _len = arxivBody.length(); // 响应长度
-                    int _show = Math.min(400, _len); // 要显示的片段长度（最多 400）
-                    String _snippet = arxivBody.substring(0, _show).replaceAll("\\s+", " "); // 清理空白并截取
-                    log.info("arXiv response snippet (first {} chars): {}", _show, _snippet); // 打印响应片段
-                }
+                        String pdfUrl = extractPdfUrl(work);
+                        String fallbackFileId = openalexId == null || openalexId.isEmpty() ? (doi != null ? doi : "oa-" + System.currentTimeMillis()) : openalexId;
+                        String finalFileId = fallbackFileId;
 
-                if (arxivBody == null) {
-                    log.warn("arXiv returned empty body for search {}", ARXIV_SEARCH_QUERY); // 空响应警告
-                } else {
-                    // 用正则尝试抽取每个 <entry> 元素（简易解析，适用于多数情况）
-                    Pattern entryPattern = Pattern.compile("<entry>(.*?)</entry>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE); // 匹配 entry
-                    Matcher entryMatcher = entryPattern.matcher(arxivBody); // 创建匹配器
-                    while (entryMatcher.find()) { // 遍历每个 entry
-                        String entry = entryMatcher.group(1); // 取得 entry 内容
-                        String id = null; // 存放 <id>
-                        String title = "untitled"; // 存放 <title>
-                        Matcher mId = Pattern.compile("<id>(.*?)</id>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(entry); // 匹配 id
-                        if (mId.find()) {
-                            id = mId.group(1).trim(); // 提取 id
-                        }
-                        Matcher mTitle = Pattern.compile("<title>(.*?)</title>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(entry); // 匹配 title
-                        if (mTitle.find()) {
-                            title = mTitle.group(1).trim().replaceAll("\\s+", " "); // 提取并压缩空白
-                        }
-                        String arxId = null; // arXiv id
-                        if (id != null && id.contains("/abs/")) {
-                            arxId = id.substring(id.lastIndexOf('/') + 1); // 从 abs URL 提取 id
-                        }
-                        String pdfUrl = null; // PDF 链接变量
-                        if (arxId != null) {
-                            pdfUrl = lookupArxivPdfUrl(arxId); // 先用 API 查找带 title 的 link
-                            if (pdfUrl == null) {
-                                pdfUrl = "https://arxiv.org/pdf/" + arxId + ".pdf"; // 作为回退，构造 pdf URL
-                            }
-                        }
-
-                        String finalFileId = (arxId != null) ? arxId : ("arx-" + System.currentTimeMillis()); // 回退 fileId
-
-                        if (pdfUrl != null) { // 如果有 PDF 链接，尝试上传
+                        if (pdfUrl != null && !pdfUrl.isEmpty()) {
                             try {
-                                log.info("Found arXiv PDF for {} -> {}", arxId, pdfUrl); // 记录发现的 PDF
-                                String filename = sanitizeFilename(title == null || title.isEmpty() ? finalFileId : title); // 生成文件名
-                                String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename); // 上传并获取响应
+                                log.info("Found PDF URL for work {}: {}", openalexId, pdfUrl);
+                                String rawTitle = title == null || title.isEmpty() ? finalFileId : title;
+                                String filename = sanitizeFilename(rawTitle);
+                                String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename);
                                 if (uploadResp != null) {
                                     try {
-                                        JsonNode uploadRoot = objectMapper.readTree(uploadResp); // 解析上传响应
-                                        JsonNode data = uploadRoot.path("data"); // 读取 data
-                                        String uploadedFileId = data.path("fileId").asText(null); // 读取 fileId
+                                        JsonNode uploadRoot = objectMapper.readTree(uploadResp);
+                                        JsonNode data = uploadRoot.path("data");
+                                        String uploadedFileId = data.path("fileId").asText(null);
                                         if (uploadedFileId != null && !uploadedFileId.isEmpty()) {
-                                            finalFileId = uploadedFileId; // 使用上传后返回的 fileId
-                                            log.info("Uploaded PDF for arXiv {} to file-service, fileId={}", arxId, finalFileId); // 打印成功信息
+                                            finalFileId = uploadedFileId;
+                                            log.info("Uploaded PDF for work {} to file-service, fileId={}", openalexId, finalFileId);
+
+                                            List<String> authors = extractAuthorsFromWork(work);
+                                            String abstractText = textOrNull(work, "abstract");
+                                            String achJson = buildAchievementJson(title, authors, abstractText, finalFileId, null);
+                                            String achId = null;
+                                            try {
+                                                achId = achievementClient.createAchievement(achJson);
+                                            } catch (Exception ex) {
+                                                log.warn("createAchievement threw for work {}: {}", openalexId, ex.getMessage());
+                                            }
+                                            if (achId == null || achId.isEmpty()) {
+                                                log.warn("Achievement creation failed for work {}. Deleting uploaded file {}", openalexId, finalFileId);
+                                                try {
+                                                    fileServiceClient.deleteFile(finalFileId);
+                                                } catch (Exception ex) {
+                                                    log.error("Failed to delete file {} after achievement failure: {}", finalFileId, ex.getMessage());
+                                                }
+                                            } else {
+                                                log.info("Created achievement {} for work {}", achId, openalexId);
+                                            }
                                         } else {
-                                            log.warn("Upload response did not contain fileId for arXiv {}: {}", arxId, uploadResp); // 警告：响应缺少 fileId
+                                            log.warn("Upload response did not contain fileId for work {}: {}", openalexId, uploadResp);
                                         }
                                     } catch (Exception pe) {
-                                        log.warn("Failed to parse upload response for arXiv {}: {}", arxId, pe.getMessage()); // 上传响应解析异常
+                                        log.warn("Failed to parse upload response for work {}: {}", openalexId, pe.getMessage());
                                     }
                                 } else {
-                                    log.warn("File upload returned null for arXiv {}", arxId); // 上传返回 null
+                                    log.warn("File upload returned null for work {}", openalexId);
                                 }
                             } catch (Exception de) {
-                                log.warn("Failed to download or upload PDF for arXiv {}: {}", arxId, de.getMessage()); // 下载或上传异常
+                                log.warn("Failed to download or upload PDF for work {}: {}", openalexId, de.getMessage());
                             }
                         } else {
-                            log.info("No PDF URL found for arXiv {}. Using fallback fileId {}", arxId, finalFileId); // 未找到 PDF，使用回退 ID
+                            log.info("No PDF URL found for work {}. Using fallback fileId {}", openalexId, finalFileId);
                         }
 
-                        Map<String, Object> achPayload = new HashMap<>(); // 构造上报负载
-                        achPayload.put("userId", "datasync"); // userId
-                        achPayload.put("title", title); // title
-                        achPayload.put("fileId", finalFileId); // fileId
+                        Map<String, Object> achPayload = new HashMap<>();
+                        achPayload.put("userId", "datasync");
+                        achPayload.put("title", title);
+                        achPayload.put("fileId", finalFileId);
+                        String jsonPayload = objectMapper.writeValueAsString(achPayload);
+                        log.info("[TEST MODE] Skipping achievement service call for work {} -> payload={}", openalexId, jsonPayload);
+                    }
+                } catch (Exception e) {
+                    log.warn("OpenAlex fetch/upload phase failed for category {}: {}", cat, e.getMessage());
+                }
+            }
 
-                        String jsonPayload = objectMapper.writeValueAsString(achPayload); // 序列化为 JSON
-                        log.info("[TEST MODE] Skipping achievement service call for arXiv {} -> payload={}", arxId, jsonPayload); // 测试模式下跳过上报
+            // OpenAlex 部分处理完成，接着尝试从 arXiv 拉取记录（按每个领域拉取 `perCategoryCount` 条）
+            int arxivCount = perCategoryCount > 0 ? perCategoryCount : 10;
+            String[] cats = autoCategories.split("\\s*,\\s*");
+            try {
+                for (String cat : cats) {
+                    final String ARXIV_SEARCH_QUERY = "cat:" + cat;
+                    log.info("arXiv query for category {} (max_results={})", cat, arxivCount);
+                    String arxivBody = arxivClient.get()
+                            .uri(uriBuilder -> uriBuilder.path("/api/query")
+                            .queryParam("search_query", ARXIV_SEARCH_QUERY)
+                            .queryParam("max_results", arxivCount)
+                            .build())
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .block(Duration.ofSeconds(40));
+
+                    log.info("arXiv response length for {}: {}", cat, arxivBody == null ? 0 : arxivBody.length());
+                    if (arxivBody != null) {
+                        int _len = arxivBody.length();
+                        int _show = Math.min(400, _len);
+                        String _snippet = arxivBody.substring(0, _show).replaceAll("\\s+", " ");
+                        log.info("arXiv response snippet for {} (first {} chars): {}", cat, _show, _snippet);
+                    }
+
+                    if (arxivBody == null) {
+                        log.warn("arXiv returned empty body for search {}", ARXIV_SEARCH_QUERY);
+                        continue;
+                    }
+
+                    Pattern entryPattern = Pattern.compile("<entry>(.*?)</entry>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+                    Matcher entryMatcher = entryPattern.matcher(arxivBody);
+                    while (entryMatcher.find()) {
+                        String entry = entryMatcher.group(1);
+                        String id = null;
+                        String title = "untitled";
+                        Matcher mId = Pattern.compile("<id>(.*?)</id>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(entry);
+                        if (mId.find()) {
+                            id = mId.group(1).trim();
+                        }
+                        Matcher mTitle = Pattern.compile("<title>(.*?)</title>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(entry);
+                        if (mTitle.find()) {
+                            title = mTitle.group(1).trim().replaceAll("\\s+", " ");
+                        }
+                        String arxId = null;
+                        if (id != null && id.contains("/abs/")) {
+                            arxId = id.substring(id.lastIndexOf('/') + 1);
+                        }
+                        String pdfUrl = null;
+                        if (arxId != null) {
+                            pdfUrl = lookupArxivPdfUrl(arxId);
+                            if (pdfUrl == null) {
+                                pdfUrl = "https://arxiv.org/pdf/" + arxId + ".pdf";
+                            }
+                        }
+
+                        String finalFileId = (arxId != null) ? arxId : ("arx-" + System.currentTimeMillis());
+
+                        if (pdfUrl != null) {
+                            try {
+                                log.info("Found arXiv PDF for {} -> {}", arxId, pdfUrl);
+                                String filename = sanitizeFilename(title == null || title.isEmpty() ? finalFileId : title);
+                                String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename);
+                                if (uploadResp != null) {
+                                    try {
+                                        JsonNode uploadRoot = objectMapper.readTree(uploadResp);
+                                        JsonNode data = uploadRoot.path("data");
+                                        String uploadedFileId = data.path("fileId").asText(null);
+                                        if (uploadedFileId != null && !uploadedFileId.isEmpty()) {
+                                            finalFileId = uploadedFileId;
+                                            log.info("Uploaded PDF for arXiv {} to file-service, fileId={}", arxId, finalFileId);
+                                            java.util.List<String> authors = extractAuthorsFromArxivEntry(entry);
+                                            String abstractText = extractSummaryFromArxivEntry(entry);
+                                            String achJson = buildAchievementJson(title, authors, abstractText, finalFileId, null);
+                                            String achId = null;
+                                            try {
+                                                achId = achievementClient.createAchievement(achJson);
+                                            } catch (Exception ex) {
+                                                log.warn("createAchievement threw for arXiv {}: {}", arxId, ex.getMessage());
+                                            }
+                                            if (achId == null || achId.isEmpty()) {
+                                                log.warn("Achievement creation failed for arXiv {}. Deleting uploaded file {}", arxId, finalFileId);
+                                                try {
+                                                    fileServiceClient.deleteFile(finalFileId);
+                                                } catch (Exception ex) {
+                                                    log.error("Failed to delete file {} after achievement failure: {}", finalFileId, ex.getMessage());
+                                                }
+                                            } else {
+                                                log.info("Created achievement {} for arXiv {}", achId, arxId);
+                                            }
+                                        } else {
+                                            log.warn("Upload response did not contain fileId for arXiv {}: {}", arxId, uploadResp);
+                                        }
+                                    } catch (Exception pe) {
+                                        log.warn("Failed to parse upload response for arXiv {}: {}", arxId, pe.getMessage());
+                                    }
+                                } else {
+                                    log.warn("File upload returned null for arXiv {}", arxId);
+                                }
+                            } catch (Exception de) {
+                                log.warn("Failed to download or upload PDF for arXiv {}: {}", arxId, de.getMessage());
+                            }
+                        } else {
+                            log.info("No PDF URL found for arXiv {}. Using fallback fileId {}", arxId, finalFileId);
+                        }
+
+                        Map<String, Object> achPayload = new HashMap<>();
+                        achPayload.put("userId", "datasync");
+                        achPayload.put("title", title);
+                        achPayload.put("fileId", finalFileId);
+
+                        String jsonPayload = objectMapper.writeValueAsString(achPayload);
+                        log.info("[TEST MODE] Skipping achievement service call for arXiv {} -> payload={}", arxId, jsonPayload);
                     }
                 }
             } catch (Exception ae) {
-                log.warn("arXiv fetch/upload phase failed: {}", ae.getMessage()); // arXiv 阶段整体异常捕获并警告
+                log.warn("arXiv fetch/upload phase failed: {}", ae.getMessage());
             }
 
             log.info("pullFromPublicDb finished (demo run)"); // 整个 demo 流程完成
@@ -297,7 +365,38 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
 
             String filename = sanitizeFilename(title == null || title.isEmpty() ? arxivId : title); // 生成文件名
             log.info("Uploading from OpenAlex arXiv {} -> url={} filename={}", arxivId, pdfUrl, filename); // 记录上传行为
-            return fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename); // 上传并返回响应
+            String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename);
+            if (uploadResp == null) {
+                return null;
+            }
+            try {
+                JsonNode uploadRoot = objectMapper.readTree(uploadResp);
+                JsonNode data = uploadRoot.path("data");
+                String uploadedFileId = data.path("fileId").asText(null);
+                if (uploadedFileId != null && !uploadedFileId.isEmpty()) {
+                    List<String> authors = extractAuthorsFromWork(work);
+                    String abstractText = textOrNull(work, "abstract");
+                    String achJson = buildAchievementJson(title, authors, abstractText, uploadedFileId, null);
+                    String achId = null;
+                    try {
+                        achId = achievementClient.createAchievement(achJson);
+                    } catch (Exception ex) {
+                        log.warn("createAchievement threw for arXiv {}: {}", arxivId, ex.getMessage());
+                    }
+                    if (achId == null || achId.isEmpty()) {
+                        log.warn("Achievement creation failed for {}. Deleting uploaded file {}", arxivId, uploadedFileId);
+                        try {
+                            fileServiceClient.deleteFile(uploadedFileId);
+                        } catch (Exception ex) {
+                            log.error("Failed to delete file {}: {}", uploadedFileId, ex.getMessage());
+                        }
+                        return null;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse upload response for arXiv {}: {}", arxivId, e.getMessage());
+            }
+            return uploadResp;
 
         } catch (Exception e) {
             log.error("uploadWorkFromOpenAlexByArxiv failed for {}: {}", arxivId, e.getMessage(), e); // 异常记录
@@ -325,7 +424,38 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
 
             String filename = sanitizeFilename(arxivId + ".pdf"); // 文件名
             log.info("Uploading arXiv {} -> {}", arxivId, pdfUrl); // 记录上传动作
-            return fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename); // 上传并返回响应
+            String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename); // 上传并返回响应
+            if (uploadResp == null) {
+                return null;
+            }
+            try {
+                JsonNode uploadRoot = objectMapper.readTree(uploadResp);
+                JsonNode data = uploadRoot.path("data");
+                String uploadedFileId = data.path("fileId").asText(null);
+                if (uploadedFileId != null && !uploadedFileId.isEmpty()) {
+                    java.util.List<String> authors = new java.util.ArrayList<>();
+                    String abstractText = null;
+                    String achJson = buildAchievementJson(arxivId, authors, abstractText, uploadedFileId, null);
+                    String achId = null;
+                    try {
+                        achId = achievementClient.createAchievement(achJson);
+                    } catch (Exception ex) {
+                        log.warn("createAchievement threw for arXiv {}: {}", arxivId, ex.getMessage());
+                    }
+                    if (achId == null || achId.isEmpty()) {
+                        log.warn("Achievement creation failed for {}. Deleting uploaded file {}", arxivId, uploadedFileId);
+                        try {
+                            fileServiceClient.deleteFile(uploadedFileId);
+                        } catch (Exception ex) {
+                            log.error("Failed to delete file {}: {}", uploadedFileId, ex.getMessage());
+                        }
+                        return null;
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to parse upload response for arXiv {}: {}", arxivId, e.getMessage());
+            }
+            return uploadResp;
         } catch (Exception e) {
             log.error("uploadFromArxivById failed for {}: {}", arxivId, e.getMessage(), e); // 异常记录
             return null; // 返回 null
@@ -464,6 +594,96 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
             arx = arx.substring(arx.lastIndexOf('/') + 1); // 取最后一段
         }
         return "https://arxiv.org/pdf/" + arx + ".pdf"; // 返回构造的 PDF URL
+    }
+
+    // 从 OpenAlex work 节点尽量提取作者列表
+    private java.util.List<String> extractAuthorsFromWork(JsonNode work) {
+        java.util.List<String> authors = new java.util.ArrayList<>();
+        if (work == null || work.isMissingNode()) {
+            return authors;
+        }
+        JsonNode auths = work.path("authorships");
+        if (auths != null && auths.isArray()) {
+            for (JsonNode a : auths) {
+                String name = null;
+                if (a.has("author")) {
+                    JsonNode au = a.path("author");
+                    name = au.path("display_name").asText(null);
+                    if (name == null) {
+                        name = au.path("author_display_name").asText(null);
+                    }
+                }
+                if (name == null) {
+                    name = a.path("raw_affiliation_string").asText(null);
+                }
+                if (name == null) {
+                    name = a.path("display_name").asText(null);
+                }
+                if (name != null && !name.isEmpty() && !authors.contains(name)) {
+                    authors.add(name);
+                }
+            }
+        }
+        return authors;
+    }
+
+    // 从 arXiv entry 文本中尝试提取作者列表（<author><name>）
+    private java.util.List<String> extractAuthorsFromArxivEntry(String entry) {
+        java.util.List<String> authors = new java.util.ArrayList<>();
+        if (entry == null) {
+            return authors;
+        }
+        Pattern p = Pattern.compile("<author>.*?<name>(.*?)</name>.*?</author>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(entry);
+        while (m.find()) {
+            String n = m.group(1).trim().replaceAll("\\s+", " ");
+            if (!n.isEmpty() && !authors.contains(n)) {
+                authors.add(n);
+            }
+        }
+        return authors;
+    }
+
+    // 提取 arXiv entry 的 <summary>
+    private String extractSummaryFromArxivEntry(String entry) {
+        if (entry == null) {
+            return null;
+        }
+        Matcher m = Pattern.compile("<summary>(.*?)</summary>", Pattern.DOTALL | Pattern.CASE_INSENSITIVE).matcher(entry);
+        if (m.find()) {
+            return m.group(1).trim().replaceAll("\\s+", " ");
+        }
+        return null;
+    }
+
+    // 构造符合 AchievementDto 的 JSON 字符串
+    private String buildAchievementJson(String title, java.util.List<String> authors, String abstractText, String fileId, Integer type) {
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode node = objectMapper.createObjectNode();
+            node.putNull("achievementId");
+            node.put("userId", "datasync");
+            node.put("title", title == null ? "" : title);
+            if (type == null) {
+                node.putNull("type");
+            } else {
+                node.put("type", type);
+            }
+            if (authors != null) {
+                com.fasterxml.jackson.databind.node.ArrayNode arr = node.putArray("authors");
+                for (String a : authors) {
+                    arr.add(a);
+                }
+            } else {
+                node.putArray("authors");
+            }
+            node.put("abstract", abstractText == null ? "" : abstractText);
+            node.put("fileId", fileId == null ? "" : fileId);
+            node.put("createdAt", System.currentTimeMillis());
+            return objectMapper.writeValueAsString(node);
+        } catch (Exception e) {
+            log.warn("buildAchievementJson failed: {}", e.getMessage());
+            return null;
+        }
     }
 
     /**
