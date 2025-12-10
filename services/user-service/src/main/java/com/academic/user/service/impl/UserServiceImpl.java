@@ -6,12 +6,14 @@ import com.academic.user.common.ServiceError;
 import com.academic.user.mapper.UserMapper;
 import com.academic.user.dto.User;
 import com.academic.user.service.UserService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,10 +37,8 @@ public class UserServiceImpl implements UserService {
     {
         String uid = UUID.randomUUID().toString();
         user.setUserId(uid);
-        user.setCreateTime(LocalDateTime.now().format(
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        user.setUpdateTime(LocalDateTime.now().format(
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
         user.setAvatarUrl(DefaultConfig.defaultAvatar);
         user.setRole(Role.NORMAL);
         if(user.getDisplayName() == null)
@@ -90,8 +90,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void updateCurrent(User user) throws ServiceError
     {
-        user.setUpdateTime(LocalDateTime.now().format(
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        user.setUpdatedAt(LocalDateTime.now());
         int r  = userMapper.updateUser(user);
         if(r == 0)
         {
@@ -110,22 +109,69 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void follow(String scholarId) {
-
+    public void follow(String targetId, String userId) throws ServiceError
+    {
+        //先判断这两个id是否都存在
+        if(userMapper.countByUserId(targetId) != 1 || userMapper.countByUserId(userId) != 1)
+        {
+            throw new ServiceError("用户不存在", 0);
+        }
+        if(userMapper.countFollowRecord(targetId, userId) != 0)
+        {
+            throw new ServiceError("已关注该用户", 0);
+        }
+        int r = userMapper.addFollowRecord(targetId, userId);
+        if(r != 1)
+        {
+            throw new ServiceError("关注失败", 0);
+        }
     }
 
     @Override
-    public void unfollow(String scholarId) {
-
+    public void unfollow(String targetId, String userId) throws ServiceError
+    {
+        //先判断这两个id是否都存在
+        if(userMapper.countByUserId(targetId) != 1 || userMapper.countByUserId(userId) != 1)
+        {
+            throw new ServiceError("用户不存在", 0);
+        }
+        if(userMapper.countFollowRecord(targetId, userId) != 1)
+        {
+            throw new ServiceError("未关注该用户", 0);
+        }
+        int r = userMapper.deleteFollowRecord(targetId, userId);
+        if(r != 1)
+        {
+            throw new ServiceError("关注失败", 0);
+        }
     }
 
     @Override
-    public List<User> getFollows(int pageNum, int pageSize) {
-        return null;
+    public IPage<User> getFollows(String userId, int pageNum, int pageSize) {
+        int count = userMapper.countByFolloerId(userId);
+        IPage<User> page = new Page<>(pageNum, pageSize, count);
+
+        List<String> userIdList = userMapper.selectPageByFollowerId(page, userId);
+        List<User> userList = new ArrayList<>();
+        for(String id: userIdList)
+        {
+            userList.add(userMapper.selectOneByUserId(id));
+        }
+        page.setRecords(userList);
+        return page;
     }
 
     @Override
-    public List<User> getFans(int pageNum, int pageSize) {
-        return null;
+    public IPage<User> getFans(String userId, int pageNum, int pageSize) {
+        int count = userMapper.countByFolloeeId(userId);
+        IPage<User> page = new Page<>(pageNum, pageSize, count);
+        List<String> userIdList = userMapper.selectPageByFolloweeId(page, userId);
+        List<User> userList = new ArrayList<>();
+        for(String id: userIdList)
+        {
+            userList.add(userMapper.selectOneByUserId(id));
+        }
+        page.setRecords(userList);
+        return page;
     }
 }
