@@ -37,5 +37,5 @@ public interface AchievementService {
 
     List<AchievementDto> listByCategory(String catId);
 
-    List<AchievementDto> searchWithSort(String sort);
+    List<AchievementDto> searchWithSort(String sortBy, String order);
 }

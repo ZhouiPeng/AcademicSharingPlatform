@@ -2,6 +2,7 @@ package com.academic.achievement.service.impl;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -165,10 +166,28 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public List<AchievementDto> searchWithSort(String sort) {
+    public List<AchievementDto> searchWithSort(String sortBy, String order) {
         List<AchievementDto> list = search(null);
-        if ("title:asc".equals(sort)) list.sort((a, b) -> a.getTitle().compareToIgnoreCase(b.getTitle()));
-        else if ("title:desc".equals(sort)) list.sort((a, b) -> b.getTitle().compareToIgnoreCase(a.getTitle()));
+        if (list.isEmpty()) return list;
+
+        String normalizedSort = sortBy == null ? "date" : sortBy.trim().toLowerCase();
+        Comparator<AchievementDto> comparator;
+        switch (normalizedSort) {
+            case "title":
+                comparator = Comparator.comparing(dto -> dto.getTitle() == null ? "" : dto.getTitle(), String.CASE_INSENSITIVE_ORDER);
+                break;
+            case "date":
+            case "createdat":
+            default:
+                comparator = Comparator.comparing(dto -> dto.getCreatedAt() == null ? 0L : dto.getCreatedAt());
+                break;
+        }
+
+        if (!"asc".equalsIgnoreCase(order)) {
+            comparator = comparator.reversed();
+        }
+
+        list.sort(comparator);
         return list;
     }
 

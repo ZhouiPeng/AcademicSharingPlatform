@@ -225,10 +225,11 @@ public class AchievementController {
     @GetMapping("/search/sort")
     @Operation(summary = "带排序的搜索")
     public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> searchSort(
-            @RequestParam(required = false) String sort,
+            @RequestParam(name = "sortBy", required = false, defaultValue = "date") String sortBy,
+            @RequestParam(name = "order", required = false, defaultValue = "desc") String order,
             @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
-        java.util.List<AchievementDto> list = service.searchWithSort(sort);
+        java.util.List<AchievementDto> list = service.searchWithSort(sortBy, order);
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);
         int to = Math.min(total, from + pageSize);

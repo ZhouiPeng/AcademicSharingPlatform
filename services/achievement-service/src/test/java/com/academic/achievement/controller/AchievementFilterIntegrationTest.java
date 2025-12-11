@@ -34,6 +34,8 @@ class AchievementFilterIntegrationTest {
 
     @Test
     void uploadSamples_thenFilterByKeywordClassificationAndYear() {
+        achievementRepository.deleteAll();
+
         String mlId = uploadSample(
                 "机器学习公平性评估",
                 List.of("Li Hua", "Chen Yu"),
