@@ -1,6 +1,7 @@
 package com.academic.achievement.service.impl;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -8,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.academic.achievement.dto.AchievementDto;
+import com.academic.achievement.dto.AchievementFilterRequest;
 import com.academic.achievement.dto.CollectionFolderDto;
 import com.academic.achievement.entity.AchievementEntity;
 import com.academic.achievement.entity.FolderEntity;
@@ -126,22 +128,40 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     public List<AchievementDto> search(String q) {
-        if (q == null || q.isEmpty()) return achievementRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
-        return achievementRepository.findByTitleContainingIgnoreCase(q).stream().map(this::toDto).collect(Collectors.toList());
+        String keyword = q == null ? "" : q.trim();
+        if (keyword.isEmpty()) {
+            return achievementRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+        }
+        final String keywordLower = keyword.toLowerCase();
+        return achievementRepository.findAll().stream()
+            .filter(e -> containsIgnoreCase(e.getTitle(), keywordLower)
+                || containsIgnoreCase(e.getAuthors(), keywordLower)
+                || containsIgnoreCase(e.getAbstractText(), keywordLower))
+            .map(this::toDto)
+            .collect(Collectors.toList());
     }
 
     @Override
-    public List<AchievementDto> filter(String filter) {
-        if (filter == null || filter.isEmpty()) return search(null);
+    public List<AchievementDto> filter(AchievementFilterRequest filterRequest) {
+        AchievementFilterRequest criteria = filterRequest == null ? new AchievementFilterRequest() : filterRequest;
+        String keyword = criteria.getKeywords() == null ? null : criteria.getKeywords().trim();
+        String classification = criteria.getClassification() == null ? null : criteria.getClassification().trim();
+        Integer fromYear = criteria.getFromYear();
+        Integer toYear = criteria.getToYear();
+
         return achievementRepository.findAll().stream()
-                .filter(e -> e.getCategories() != null && e.getCategories().contains(filter))
+                .filter(e -> matchKeywords(e, keyword))
+                .filter(e -> matchClassification(e, classification))
+                .filter(e -> matchYearRange(e, fromYear, toYear))
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<AchievementDto> listByCategory(String catId) {
-        return filter(catId);
+        AchievementFilterRequest criteria = new AchievementFilterRequest();
+        criteria.setClassification(catId);
+        return filter(criteria);
     }
 
     @Override
@@ -175,5 +195,42 @@ public class AchievementServiceImpl implements AchievementService {
         if (d.getType() != null) e.setType(d.getType());
         e.setAbstractText(d.getAbstractText());
         return e;
+    }
+
+    private boolean containsIgnoreCase(String source, String keywordLower) {
+        if (source == null || source.isEmpty()) return false;
+        return source.toLowerCase().contains(keywordLower);
+    }
+
+    private boolean matchKeywords(AchievementEntity entity, String keyword) {
+        if (keyword == null || keyword.isEmpty()) return true;
+        String lower = keyword.toLowerCase();
+        return containsIgnoreCase(entity.getTitle(), lower)
+                || containsIgnoreCase(entity.getAuthors(), lower)
+                || containsIgnoreCase(entity.getAbstractText(), lower);
+    }
+
+    private boolean matchClassification(AchievementEntity entity, String classification) {
+        if (classification == null || classification.isEmpty()) return true;
+        String categories = entity.getCategories();
+        return categories != null && categories.contains(classification);
+    }
+
+    private boolean matchYearRange(AchievementEntity entity, Integer fromYear, Integer toYear) {
+        if (fromYear == null && toYear == null) return true;
+        if (entity.getCreatedAt() == null) return false;
+        Integer createdYear = extractYear(entity.getCreatedAt());
+        if (createdYear == null) return false;
+        if (fromYear != null && createdYear < fromYear) return false;
+        if (toYear != null && createdYear > toYear) return false;
+        return true;
+    }
+
+    private Integer extractYear(Long epochMillis) {
+        try {
+            return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).getYear();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 }
