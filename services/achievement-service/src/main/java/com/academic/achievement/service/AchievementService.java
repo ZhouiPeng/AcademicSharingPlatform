@@ -3,6 +3,7 @@ package com.academic.achievement.service;
 import java.util.List;
 
 import com.academic.achievement.dto.AchievementDto;
+import com.academic.achievement.dto.AchievementFilterRequest;
 import com.academic.achievement.dto.CollectionFolderDto;
 
 public interface AchievementService {
@@ -32,9 +33,9 @@ public interface AchievementService {
 
     List<AchievementDto> search(String q);
 
-    List<AchievementDto> filter(String filter);
+    List<AchievementDto> filter(AchievementFilterRequest filterRequest);
 
     List<AchievementDto> listByCategory(String catId);
 
-    List<AchievementDto> searchWithSort(String sort);
+    List<AchievementDto> searchWithSort(String sortBy, String order);
 }
