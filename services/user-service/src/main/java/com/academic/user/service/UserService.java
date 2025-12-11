@@ -1,5 +1,10 @@
 package com.academic.user.service;
 
+import com.academic.user.common.ServiceError;
+import com.academic.user.dto.User;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -25,11 +30,11 @@ public interface UserService {
 
     boolean validateResetCode(String userId, String code);
 
-    void follow(String scholarId);
+    void follow(String targetId, String userId) throws ServiceError;
 
-    void unfollow(String scholarId);
+    void unfollow(String targetId, String userId) throws ServiceError;
 
-    List<User> getFollows(int pageNum, int pageSize);
+    IPage<User> getFollows(String userId, int pageNum, int pageSize);
 
-    List<User> getFans(int pageNum, int pageSize);
+    IPage<User> getFans(String userId, int pageNum, int pageSize);
 }
