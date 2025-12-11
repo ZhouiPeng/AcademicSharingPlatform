@@ -1,7 +1,6 @@
 package com.academic.user.controller;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,12 +19,11 @@ import com.academic.user.common.ApiResponse;
 import com.academic.user.common.JwtUtil;
 import com.academic.user.common.Secure;
 import com.academic.user.common.ServiceError;
-import com.academic.user.dto.ResetRequest;
 import com.academic.user.dto.User;
 import com.academic.user.service.UserService;
 import com.alibaba.fastjson.JSON;
-
 import com.baomidou.mybatisplus.core.metadata.IPage;
+
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -152,13 +150,27 @@ public class UserController {
         }
     }
 
-    //修改用户密码
-    @PostMapping("/password/reset")
+    //发送验证码
+    @PostMapping("/verification/send")
     @ResponseBody
-    public String passwordReset(@RequestBody ResetRequest req) {
+    public String registerValidation(@RequestBody Map<String, String> requestBody) {
         try {
-            userService.resetPassword(req);
-            return ApiResponse.success("验证码已发送，请检查邮箱", null);
+            String userId = userService.generateVerificationCode(null, requestBody.get("mail"));
+            return ApiResponse.success("验证码已发送，请检查邮箱", userId);
+        } catch (ServiceError e) {
+            return ApiResponse.fail(e.getCode(), e.getMsg());
+        } catch (Exception e) {
+            return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
+        }
+    }
+
+    //发送验证码
+    @PostMapping("/verification/send/{userId}")
+    @ResponseBody
+    public String resetPassValidation(@PathVariable("userId") String userId) {
+        try {
+            userId = userService.generateVerificationCode(userId, null);
+            return ApiResponse.success("验证码已发送，请检查邮箱", userId);
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
@@ -167,11 +179,10 @@ public class UserController {
     }
 
     //确认验证码
-    @GetMapping("/password/validation")
+    @PostMapping("/verification/validate/{userId}")
     @ResponseBody
-    public String passwordValidation(@RequestParam("userId") String userId,
-            @RequestParam("code") String code) {
-        boolean ok = userService.validateResetCode(userId, code);
+    public String validateCode(@PathVariable("userId") String userId, @RequestBody Map<String, String> requestBody) {
+        boolean ok = userService.validateVerificationCode(userId, requestBody.get("code"));
         if (ok) {
             return ApiResponse.success("确认成功", null);
         }

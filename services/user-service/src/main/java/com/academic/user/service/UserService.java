@@ -1,17 +1,10 @@
 package com.academic.user.service;
 
+import org.springframework.stereotype.Service;
+
 import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
-import com.academic.user.common.ServiceError;
-import com.academic.user.dto.ResetRequest;
-import com.academic.user.dto.User;
 
 @Service
 public interface UserService {
@@ -26,9 +19,9 @@ public interface UserService {
 
     void updateCurrent(User user) throws ServiceError;
 
-    void resetPassword(ResetRequest req) throws ServiceError;
+    String generateVerificationCode(String userId, String mail) throws ServiceError;
 
-    boolean validateResetCode(String userId, String code);
+    boolean validateVerificationCode(String userId, String code);
 
     void follow(String targetId, String userId) throws ServiceError;
 
@@ -37,4 +30,5 @@ public interface UserService {
     IPage<User> getFollows(String userId, int pageNum, int pageSize);
 
     IPage<User> getFans(String userId, int pageNum, int pageSize);
+
 }

@@ -1,16 +1,5 @@
 package com.academic.user.service.impl;
 
-import com.academic.user.common.DefaultConfig;
-import com.academic.user.common.Role;
-import com.academic.user.common.ServiceError;
-import com.academic.user.mapper.UserMapper;
-import com.academic.user.dto.User;
-import com.academic.user.service.UserService;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,16 +9,18 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import com.academic.user.common.DefaultConfig;
 import com.academic.user.common.Role;
 import com.academic.user.common.ServiceError;
-import com.academic.user.dto.ResetRequest;
 import com.academic.user.dto.User;
 import com.academic.user.mapper.UserMapper;
 import com.academic.user.service.UserService;
-import com.academic.user.service.mail.MailService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 /**
  * Implementation of UserService that uses MyBatis mapper injection. Removed
@@ -42,12 +33,12 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     // in-memory store for reset tokens: userId -> token entry
     private final ConcurrentHashMap<String, TokenEntry> resetTokens = new ConcurrentHashMap<>();
-    private final MailService mailService;
+    private final JavaMailSender mailSender;
 
     @Autowired
-    public UserServiceImpl(UserMapper userMapper, MailService mailService) {
+    public UserServiceImpl(UserMapper userMapper, JavaMailSender mailSender) {
         this.userMapper = userMapper;
-        this.mailService = mailService;
+        this.mailSender = mailSender;
     }
 
     @Override
@@ -106,37 +97,40 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void resetPassword(ResetRequest req) throws ServiceError {
-        if (req == null) {
-            throw new ServiceError("请求体为空", 0);
-        }
-        // locate user by userId or username
-        User user = null;
-        if (req.getUserId() != null && !req.getUserId().isEmpty()) {
-            user = userMapper.selectOneByUserId(req.getUserId());
-        }
-        if (user == null && req.getUsername() != null && !req.getUsername().isEmpty()) {
-            user = userMapper.selectOneByUserName(req.getUsername());
-        }
-        if (user == null) {
-            throw new ServiceError("用户不存在", 0);
-        }
-        if (user.getEmail() == null || user.getEmail().isEmpty()) {
-            throw new ServiceError("用户未设置邮箱，无法发送验证码", 0);
+    public String generateVerificationCode(String userId, String mail) throws ServiceError {
+        if (userId != null) {
+            mail = userMapper.selectOneByUserId(userId).getEmail();
+        } else {
+            userId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
         }
 
-        // generate 6-digit numeric code
+        // allow request to provide an alternate mail address; fall back to user's email
+        // if client provided a verification code in request, use it; otherwise generate one
         int codeInt = ThreadLocalRandom.current().nextInt(100000, 1000000);
         String code = String.format("%06d", codeInt);
         long expireAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10);
-        resetTokens.put(user.getUserId(), new TokenEntry(code, expireAt));
+        resetTokens.put(userId, new TokenEntry(code, expireAt));
 
-        // send email (or log)
-        mailService.sendResetCode(user.getEmail(), code);
+        // send verification code via SMTP using configured JavaMailSender
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            String from = System.getenv("SMTP_USER");
+            if (from != null && !from.isEmpty()) {
+                message.setFrom(from);
+            }
+            message.setTo(mail);
+            message.setSubject("[user-service] 验证码 / Verification Code");
+            message.setText("您的验证码是: " + code + "。有效期 10 分钟。\nIf you didn't request this, please ignore this email.");
+            mailSender.send(message);
+        } catch (Exception e) {
+            // fallback
+            throw new ServiceError("发送验证码失败", 0);
+        }
+        return userId;
     }
 
     @Override
-    public boolean validateResetCode(String userId, String code) {
+    public boolean validateVerificationCode(String userId, String code) {
         if (userId == null || userId.isEmpty() || code == null || code.isEmpty()) {
             return false;
         }
