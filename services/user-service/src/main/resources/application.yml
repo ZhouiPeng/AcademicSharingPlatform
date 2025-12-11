@@ -12,6 +12,22 @@ spring:
 server:
   port: 8081
 
+spring.mail:
+  host: ${SMTP_HOST}
+  port: ${SMTP_PORT}
+  username: ${SMTP_USER}
+  password: ${SMTP_PASS}
+  properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true  # 启用TLS
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 springdoc:
   swagger-ui:
     enabled: true

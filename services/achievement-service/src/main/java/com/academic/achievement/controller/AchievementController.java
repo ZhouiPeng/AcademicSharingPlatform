@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.academic.achievement.config.EnvironmentConfig;
 import com.academic.achievement.dto.AchievementDto;
+import com.academic.achievement.dto.AchievementFilterRequest;
 import com.academic.achievement.dto.AchievementUpdateRequest;
 import com.academic.achievement.dto.ApiResponse;
 import com.academic.achievement.dto.CollectionFolderDto;
@@ -189,13 +190,15 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
-    @GetMapping("/filter")
+    @PostMapping("/filter")
     @Operation(summary = "按过滤条件筛选成就")
     public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> filter(
-            @RequestParam(required = false) String filter,
-            @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
-            @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
-        java.util.List<AchievementDto> list = service.filter(filter);
+            @RequestBody(required = false) AchievementFilterRequest filterRequest) {
+        AchievementFilterRequest criteria = filterRequest == null ? new AchievementFilterRequest() : filterRequest;
+        int pageNum = criteria.getPageNum() == null || criteria.getPageNum() < 1 ? 1 : criteria.getPageNum();
+        int pageSize = criteria.getPageSize() == null || criteria.getPageSize() < 1 ? 10 : criteria.getPageSize();
+
+        java.util.List<AchievementDto> list = service.filter(criteria);
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);
         int to = Math.min(total, from + pageSize);
@@ -222,10 +225,11 @@ public class AchievementController {
     @GetMapping("/search/sort")
     @Operation(summary = "带排序的搜索")
     public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> searchSort(
-            @RequestParam(required = false) String sort,
+            @RequestParam(name = "sortBy", required = false, defaultValue = "date") String sortBy,
+            @RequestParam(name = "order", required = false, defaultValue = "desc") String order,
             @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
-        java.util.List<AchievementDto> list = service.searchWithSort(sort);
+        java.util.List<AchievementDto> list = service.searchWithSort(sortBy, order);
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);
         int to = Math.min(total, from + pageSize);

@@ -1,34 +1,42 @@
 package com.academic.user.controller;
 
-import com.academic.user.common.*;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.academic.user.common.ApiResponse;
+import com.academic.user.common.JwtUtil;
+import com.academic.user.common.Secure;
+import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
+import com.academic.user.service.UserService;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-
-// ...existing code...
-import com.academic.user.service.UserService;
-
-import java.security.SignatureException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
-
     private final UserService userService;
 
     Map<String, Object> data = new HashMap<>();
+
     public UserController(UserService userService) {
         this.userService = userService;
     }
@@ -38,8 +46,7 @@ public class UserController {
     @ResponseBody
     public String registerNormal(@RequestBody User requestUser) {
         //生成User
-        try
-        {
+        try {
 
             requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
             String userId = userService.registerNormal(requestUser);
@@ -47,13 +54,9 @@ public class UserController {
             return ApiResponse.success(
                     "注册成功", JSON.toJSONString(data)
             );
-        }
-        catch (ServiceError e)
-        {
+        } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
         }
@@ -63,8 +66,7 @@ public class UserController {
     @PostMapping("/login")
     @ResponseBody
     public String login(@RequestBody User requestUser) {
-        try
-        {
+        try {
             requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
             User user = userService.login(requestUser);
             String token = JwtUtil.generateToken(user.getUserId());
@@ -73,13 +75,9 @@ public class UserController {
             data.put("expiresIn", JwtUtil.expirationTime);
             data.put("user", user);
             return ApiResponse.success("登录成功", JSON.toJSONString(data));
-        }
-        catch(ServiceError e)
-        {
+        } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
         }
     }
@@ -88,14 +86,11 @@ public class UserController {
     @GetMapping("/current")
     @ResponseBody
     public String getCurrent(@RequestHeader(name = "Authorization") String token) {
-        try
-        {
+        try {
             String userId = JwtUtil.analyseToken(token);
             User user = userService.getCurrent(userId);
-            return ApiResponse.success("获取成功",JSON.toJSONString(user));
-        }
-        catch(ExpiredJwtException e)
-        {
+            return ApiResponse.success("获取成功", JSON.toJSONString(user));
+        } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
         } catch (MalformedJwtException e) {
             return ApiResponse.fail(-1, "Token格式错误");
@@ -103,20 +98,13 @@ public class UserController {
             return ApiResponse.fail(-1, "Token不被支持");
         } catch (IllegalArgumentException e) {
             return ApiResponse.fail(-1, "Token为空或无效");
-        }
-        catch(JwtException e)
-        {
+        } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
-        }
-        catch(ServiceError e)
-        {
+        } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙");
         }
-
 
     }
 
@@ -124,17 +112,12 @@ public class UserController {
     @GetMapping("/{userId}")
     @ResponseBody
     public String getById(@PathVariable("userId") String userId) {
-        try
-        {
+        try {
             User user = userService.getById(userId);
-            return ApiResponse.success("获取成功",JSON.toJSONString(user));
-        }
-        catch(ServiceError e)
-        {
+            return ApiResponse.success("获取成功", JSON.toJSONString(user));
+        } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
         }
 
@@ -144,15 +127,13 @@ public class UserController {
     @PutMapping("/current")
     @ResponseBody
     public String updateCurrent(@RequestHeader(name = "Authorization") String token,
-                                @RequestBody User user) {
-        try
-        {
+            @RequestBody User user) {
+        try {
             String userId = JwtUtil.analyseToken(token);
             user.setUserId(userId);
             userService.updateCurrent(user);
             return ApiResponse.success("修改成功", null);
-        }catch(ExpiredJwtException e)
-        {
+        } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
         } catch (MalformedJwtException e) {
             return ApiResponse.fail(-1, "Token格式错误");
@@ -160,52 +141,64 @@ public class UserController {
             return ApiResponse.fail(-1, "Token不被支持");
         } catch (IllegalArgumentException e) {
             return ApiResponse.fail(-1, "Token为空或无效");
-        }
-        catch(JwtException e)
-        {
+        } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
-        }
-        catch(ServiceError e)
-        {
+        } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
 
-    //修改用户密码
-    @PostMapping("/password/reset")
+    //发送验证码
+    @PostMapping("/verification/send")
     @ResponseBody
-    public String passwordReset(@RequestBody RequestBody req) {
-        userService.resetPassword(req);
-        return ApiResponse.success("修改成功",null);
+    public String registerValidation(@RequestBody Map<String, String> requestBody) {
+        try {
+            String userId = userService.generateVerificationCode(null, requestBody.get("mail"));
+            return ApiResponse.success("验证码已发送，请检查邮箱", userId);
+        } catch (ServiceError e) {
+            return ApiResponse.fail(e.getCode(), e.getMsg());
+        } catch (Exception e) {
+            return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
+        }
+    }
+
+    //发送验证码
+    @PostMapping("/verification/send/{userId}")
+    @ResponseBody
+    public String resetPassValidation(@PathVariable("userId") String userId) {
+        try {
+            userId = userService.generateVerificationCode(userId, null);
+            return ApiResponse.success("验证码已发送，请检查邮箱", userId);
+        } catch (ServiceError e) {
+            return ApiResponse.fail(e.getCode(), e.getMsg());
+        } catch (Exception e) {
+            return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
+        }
     }
 
     //确认验证码
-    @GetMapping("/password/validation")
+    @PostMapping("/verification/validate/{userId}")
     @ResponseBody
-    public String passwordValidation(@RequestParam("userId") String userId,
-                                                             @RequestParam("code") String code) {
-        boolean ok = userService.validateResetCode(userId, code);
-        if (ok) return ApiResponse.success("确认成功",null);
+    public String validateCode(@PathVariable("userId") String userId, @RequestBody Map<String, String> requestBody) {
+        boolean ok = userService.validateVerificationCode(userId, requestBody.get("code"));
+        if (ok) {
+            return ApiResponse.success("确认成功", null);
+        }
         return ApiResponse.fail("验证码无效");
     }
 
     //关注用户
     @PostMapping("/follow/{userId}")
     @ResponseBody
-    public String follow(@RequestHeader(name="Authorization") String token,
-                         @PathVariable("userId") String targetId) {
-        try
-        {
+    public String follow(@RequestHeader(name = "Authorization") String token,
+            @PathVariable("userId") String targetId) {
+        try {
             String userId = JwtUtil.analyseToken(token);
             userService.follow(targetId, userId);
-            return ApiResponse.success("关注成功",null);
-        }
-        catch(ExpiredJwtException e)
-        {
+            return ApiResponse.success("关注成功", null);
+        } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
         } catch (MalformedJwtException e) {
             return ApiResponse.fail(-1, "Token格式错误");
@@ -213,17 +206,11 @@ public class UserController {
             return ApiResponse.fail(-1, "Token不被支持");
         } catch (IllegalArgumentException e) {
             return ApiResponse.fail(-1, "Token为空或无效");
-        }
-        catch(JwtException e)
-        {
+        } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
-        }
-        catch(ServiceError e)
-        {
+        } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
@@ -232,15 +219,12 @@ public class UserController {
     @DeleteMapping("/follow/{userId}")
     @ResponseBody
     public String unfollow(@RequestHeader(name = "Authorization") String token,
-                           @PathVariable("userId") String targetId) {
-        try
-        {
+            @PathVariable("userId") String targetId) {
+        try {
             String userId = JwtUtil.analyseToken(token);
             userService.follow(targetId, userId);
-            return ApiResponse.success("取消成功",null);
-        }
-        catch(ExpiredJwtException e)
-        {
+            return ApiResponse.success("取消成功", null);
+        } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
         } catch (MalformedJwtException e) {
             return ApiResponse.fail(-1, "Token格式错误");
@@ -248,17 +232,11 @@ public class UserController {
             return ApiResponse.fail(-1, "Token不被支持");
         } catch (IllegalArgumentException e) {
             return ApiResponse.fail(-1, "Token为空或无效");
-        }
-        catch(JwtException e)
-        {
+        } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
-        }
-        catch(ServiceError e)
-        {
+        } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
@@ -266,19 +244,14 @@ public class UserController {
     //查看关注用户
     @GetMapping("/follows")
     @ResponseBody
-    public String getFollows(@RequestHeader(name="Authorization") String token,
-                             @RequestParam(value = "pageNum", required = false, defaultValue = "1")
-                             int pageNum,
-                             @RequestParam(value = "pageSize", required = false, defaultValue = "10")
-                                 int pageSize) {
-        try
-        {
+    public String getFollows(@RequestHeader(name = "Authorization") String token,
+            @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        try {
             String userId = JwtUtil.analyseToken(token);
             IPage<User> userPage = userService.getFollows(userId, pageNum, pageSize);
-            return ApiResponse.success("获取成功",JSON.toJSONString(userPage));
-        }
-        catch(ExpiredJwtException e)
-        {
+            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+        } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
         } catch (MalformedJwtException e) {
             return ApiResponse.fail(-1, "Token格式错误");
@@ -286,34 +259,24 @@ public class UserController {
             return ApiResponse.fail(-1, "Token不被支持");
         } catch (IllegalArgumentException e) {
             return ApiResponse.fail(-1, "Token为空或无效");
-        }
-        catch(JwtException e)
-        {
+        } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙");
         }
-
     }
 
     //查看粉丝
     @GetMapping("/fans")
     @ResponseBody
-    public String getFans(@RequestHeader(name="Authorization") String token,
-                        @RequestParam(value = "pageNum", required = false, defaultValue = "1")
-                              int pageNum,
-                          @RequestParam(value = "pageSize", required = false, defaultValue = "10")
-                          int pageSize) {
-        try
-        {
+    public String getFans(@RequestHeader(name = "Authorization") String token,
+            @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        try {
             String userId = JwtUtil.analyseToken(token);
             IPage<User> userPage = userService.getFans(userId, pageNum, pageSize);
-            return ApiResponse.success("获取成功",JSON.toJSONString(userPage));
-        }
-        catch(ExpiredJwtException e)
-        {
+            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+        } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
         } catch (MalformedJwtException e) {
             return ApiResponse.fail(-1, "Token格式错误");
@@ -321,15 +284,10 @@ public class UserController {
             return ApiResponse.fail(-1, "Token不被支持");
         } catch (IllegalArgumentException e) {
             return ApiResponse.fail(-1, "Token为空或无效");
-        }
-        catch(JwtException e)
-        {
+        } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙");
         }
-
     }
 }
