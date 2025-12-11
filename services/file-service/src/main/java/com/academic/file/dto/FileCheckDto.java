@@ -12,8 +12,9 @@ public class FileCheckDto {
 	private String fileId;
 	private String fileName;
 	private long size;
-	private List<String> author;
+	private List<String> owners;
 	private String uploader;
 	private String uploadTime;
+	private String updateTime;
 	private String permission;
 }

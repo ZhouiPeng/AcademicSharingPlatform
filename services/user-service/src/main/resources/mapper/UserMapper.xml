@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.academic.user.mapper.UserMapper">
+    <!--添加用户-->
+    <insert id="add" parameterType="com.academic.user.dto.User" useGeneratedKeys="true" keyProperty="userId">
+        insert into users(user_id, username, email, password_hash, role, display_name, avatar_url,
+        created_at, updated_at)
+        values(#{userId},#{username},#{email},#{passwordHash},#{role}, #{displayName}, #{avatarUrl},
+        #{createdAt}, #{updatedAt})
+    </insert>
+    <insert id="addFollowRecord">
+        insert into user_follows(follower_id, followee_id) values(#{userId}, #{targetId});
+    </insert>
+    <delete id="deleteFollowRecord">
+        delete from user_follows where follower_id = #{userId} and followee_id = #{targetId};
+    </delete>
+
+    <select id="selectUser" parameterType="java.lang.String" resultType="com.academic.user.dto.User">
+        select * from users where user_id = #{userId}
+    </select>
+
+    <select id="selectOneByUserName" parameterType="java.lang.String"
+            resultType="com.academic.user.dto.User">
+        select * from users where username = #{userName}
+    </select>
+
+    <select id="selectOneByUserId" parameterType="java.lang.String"
+            resultType="com.academic.user.dto.User">
+        select * from users where user_id = #{userId}
+    </select>
+    <select id="countByUserId" resultType="java.lang.Integer">
+        select count(*) from users where user_id = #{userId};
+    </select>
+    <select id="countFollowRecord" resultType="java.lang.Integer">
+        select count(*) from user_follows where follower_id = #{userId} and followee_id = #{targetId};
+    </select>
+    <select id="selectPageByFollowerId" resultType="java.lang.String">
+        select followee_id from user_follows where follower_id = #{userId}
+    </select>
+    <select id="selectPageByFolloweeId" resultType="java.lang.String">
+        select follower_id from user_follows where followee_id = #{userId}
+    </select>
+    <select id="countByFolloerId" resultType="java.lang.Integer">
+        select count(*) from user_follows where follower_id = #{userId}
+    </select>
+    <select id="countByFolloeeId" resultType="java.lang.Integer">
+        select count(*) from user_follows where followee_id = #{userId}
+    </select>
+
+    <update id="updateUser" parameterType="com.academic.user.dto.User">
+        update users
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="#{displayName} != null and #{displayName} != ''">
+                display_name = #{displayName},
+            </if>
+            <if test="#{avatarUrl} != null and #{avatarUrl} != ''">
+                avatar_url = #{avatarUrl},
+            </if>
+            <if test="#{email} != null and #{email} != ''">
+                email = #{email},
+            </if>
+        </trim>
+        <where>
+            user_id = #{userId};
+        </where>
+    </update>
+</mapper>
