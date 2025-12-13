@@ -42,9 +42,10 @@ public class UserController {
     }
 
     //注册
-    @PostMapping("/normal/register")
+    @PostMapping("/normal/register/{validateId}")
     @ResponseBody
-    public String registerNormal(@RequestBody User requestUser) {
+    public String registerNormal(@PathVariable(name="validateId") String validateId,
+                                @RequestBody User requestUser) {
         //生成User
         try {
 
@@ -178,16 +179,16 @@ public class UserController {
         }
     }
 
-    //确认验证码
-    @PostMapping("/verification/validate/{userId}")
-    @ResponseBody
-    public String validateCode(@PathVariable("userId") String userId, @RequestBody Map<String, String> requestBody) {
-        boolean ok = userService.validateVerificationCode(userId, requestBody.get("code"));
-        if (ok) {
-            return ApiResponse.success("确认成功", null);
-        }
-        return ApiResponse.fail("验证码无效");
-    }
+//    //确认验证码
+//    @PostMapping("/verification/validate/{userId}")
+//    @ResponseBody
+//    public String validateCode(@PathVariable("userId") String userId, @RequestBody Map<String, String> requestBody) {
+//        boolean ok = userService.validateVerificationCode(userId, requestBody.get("code"));
+//        if (ok) {
+//            return ApiResponse.success("确认成功", null);
+//        }
+//        return ApiResponse.fail("验证码无效");
+//    }
 
     //关注用户
     @PostMapping("/follow/{userId}")

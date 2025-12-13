@@ -23,6 +23,8 @@ public interface UserService {
 
     boolean validateVerificationCode(String userId, String code);
 
+    boolean resetPassword(String userId, String code);
+
     void follow(String targetId, String userId) throws ServiceError;
 
     void unfollow(String targetId, String userId) throws ServiceError;

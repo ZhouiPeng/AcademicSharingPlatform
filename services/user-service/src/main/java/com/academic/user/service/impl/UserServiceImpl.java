@@ -144,8 +144,14 @@ public class UserServiceImpl implements UserService {
         }
         if (entry.code.equals(code)) {
             resetTokens.remove(userId);
+            //修改数据库
             return true;
         }
+        return false;
+    }
+    @Override
+    public boolean resetPassword(String userId, String code) {
+
         return false;
     }
 
