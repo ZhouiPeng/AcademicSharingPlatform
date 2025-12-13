@@ -17,19 +17,19 @@ public class FileEntity {
     @Column(length = 36)
     private String id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", length = 255, nullable = false)
     private String name;
 
-    @Column(name = "uploader_id")
+    @Column(name = "uploader_id", length = 128)
     private String uploaderId;
 
-    @Column(nullable = false)
-    private String bucket;
+     @Column(name = "url", length = 1024)
+    private String url;
 
-    @Column(name = "object_key", length = 512, nullable = false, unique = true)
+    @Column(name = "object_key", length = 512, unique = true)
     private String objectKey;
 
-    @Column
+    @Column(name = "size")
     private Long size;
 
     @Column(name = "created_at")

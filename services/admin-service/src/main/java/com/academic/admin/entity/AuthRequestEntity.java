@@ -1,0 +1,71 @@
+package com.academic.admin.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "auth_requests")
+public class AuthRequestEntity {
+
+    @Id
+    @Column(length = 36)
+    private String id;
+
+    @Column(name = "applicant_user_id", nullable = false, length = 128)
+    private String applicantUserId;
+
+    @Column(name = "assigned_admin_id", nullable = false, length = 128)
+    private String assignedAdminId;
+
+    @Column(name = "real_name", nullable = false, length = 256)
+    private String realName;
+
+    @Column(name = "id_number", nullable = false, length = 128)
+    private String idNumber;
+
+    @Column(name = "phone", nullable = false, length = 64)
+    private String phone;
+
+    @Column(name = "organization", nullable = false, length = 256)
+    private String organization;
+
+    @Column(name = "position", nullable = false, length = 256)
+    private String position;
+
+    @Column(name = "application_reason", nullable = false, columnDefinition = "TEXT")
+    private String applicationReason;
+
+    @Column(name = "auth_type", nullable = false, length = 64)
+    private String authType;
+
+    @Column(name = "attachments", columnDefinition = "TEXT")
+    private String attachments;
+
+    @Column(name = "status", length = 32)
+    private String status;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (updatedAt == null) updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+}

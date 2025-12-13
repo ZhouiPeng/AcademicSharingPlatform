@@ -1,4 +1,4 @@
-package com.example.admin;
+package com.academic.admin;
 
 import org.springframework.boot.web.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;

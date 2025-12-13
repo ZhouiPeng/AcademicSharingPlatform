@@ -9,9 +9,6 @@ import com.academic.file.service.ObsClientService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -27,31 +24,31 @@ public class FileServiceImpl implements FileService {
 
     @Override
     @Transactional
-    public FileUploadDto uploadFile(String uploaderId, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is required and must not be empty");
-        }
+    public FileUploadDto uploadFile(String uploaderId, MultipartFile file, FileUploadRequest req) {
         String fileId = UUID.randomUUID().toString();
-        String fileName = file == null ? null : file.getOriginalFilename();
-        long size = file == null ? 0L : file.getSize();
-        String uploadTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-        String objectKey = "papers/" + (fileName == null ? "unknown" : fileName);
-        if (fileRepository.deleteByObjectKey(objectKey) > 0) {
-            fileRepository.flush();
+        String fileName = req.getFilename();
+        String objectKey = null;
+        long size = 0L;
+
+        if (file != null && !file.isEmpty()) {
+            size = file.getSize();
+            objectKey = "papers/" + (fileName == null ? "unknown" : fileName);
+            if (fileRepository.deleteByObjectKey(objectKey) > 0) {
+                fileRepository.flush();
+            }
+            obsClientService.uploadPdf(file, objectKey);
         }
-        obsClientService.uploadPdf(file, objectKey);
+        
         FileEntity.FileEntityBuilder builder = FileEntity.builder()
             .id(fileId)
             .name(fileName)
             .uploaderId(uploaderId)
-            .bucket("team13-file")
+            .url(req.getUrl())
             .objectKey(objectKey)
-            .size(size)
-            .createdAt(LocalDateTime.now())
-            .updatedAt(LocalDateTime.now());
+            .size(size);
         FileEntity entity = builder.build();
-        fileRepository.save(entity);
-        return new FileUploadDto(fileId, fileName, size, uploadTime);
+        entity = fileRepository.save(entity);
+        return new FileUploadDto(fileId, fileName, size, entity.getCreatedAt().toString());
     }
 
     @Override
@@ -61,11 +58,11 @@ public class FileServiceImpl implements FileService {
         return new FileCheckDto(
             entity.getId(),
             entity.getName(),
-            entity.getSize() == null ? 0L : entity.getSize(),
-            Collections.emptyList(),
-            entity.getUploaderId() == null ? null : String.valueOf(entity.getUploaderId()),
-            entity.getCreatedAt() == null ? null : entity.getCreatedAt().toString(),
-            entity.getUpdatedAt() == null ? null : entity.getUpdatedAt().toString(),
+            entity.getSize(),
+            entity.getUrl(),
+            entity.getUploaderId(),
+            entity.getCreatedAt().toString(),
+            entity.getUpdatedAt().toString(),
             null
         );
     }
@@ -88,13 +85,12 @@ public class FileServiceImpl implements FileService {
         obsClientService.changePath(entity.getObjectKey(), objectKey);
         entity.setName(newName);
         entity.setObjectKey(objectKey);
-        entity.setUpdatedAt(LocalDateTime.now());
-        fileRepository.save(entity);
+        entity = fileRepository.save(entity);
         return new FileUploadDto(
             entity.getId(),
             entity.getName(),
-            entity.getSize() == null ? 0L : entity.getSize(),
-            entity.getUpdatedAt() == null ? null : entity.getUpdatedAt().toString()
+            entity.getSize(),
+            entity.getUpdatedAt().toString()
         );
     }
 }
