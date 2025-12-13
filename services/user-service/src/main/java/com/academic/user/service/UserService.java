@@ -21,7 +21,9 @@ public interface UserService {
 
     String generateVerificationCode(String userId, String mail) throws ServiceError;
 
-    boolean validateVerificationCode(String userId, String code);
+    void validateVerificationCode(String validateId, String code) throws ServiceError;
+
+    void resetPassword(String userId, String newPasswordHash) throws ServiceError;
 
     boolean resetPassword(String userId, String code);
 
