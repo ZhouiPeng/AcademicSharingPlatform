@@ -64,10 +64,16 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
     }
 
-    // 发送通知
-    @PutMapping("/information")
+
+    @PostMapping("/information")
     public ResponseEntity<ApiResponse<Void>> sendInformation(@Valid @RequestBody InformationRequest req) {
         adminService.sendInformation(req);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PutMapping("/information/{userId}")
+    public ResponseEntity<ApiResponse<Void>> readInformation(@Valid @RequestBody InformationRequest req) {
+        adminService.readInformation(req);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

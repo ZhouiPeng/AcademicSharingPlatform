@@ -40,7 +40,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
     private static final Logger log = LoggerFactory.getLogger(DataSyncServiceImpl.class); // 获取当前类的 Logger
 
     // WebClient 实例用于访问 OpenAlex API（元数据）
-    private final WebClient webClient; // 用于调用 OpenAlex 的客户端
+    private final WebClient openAlexClient; // 用于调用 OpenAlex 的客户端
     // arXiv 的 WebClient 用于获取 Atom feed
     private final WebClient arxivClient; // 用于调用 arXiv API 的客户端
     // JSON 解析器实例
@@ -69,7 +69,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                 = org.springframework.web.reactive.function.client.ExchangeStrategies.builder()
                         .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
                         .build(); // 设置最大内存缓冲为 5 MiB
-        this.webClient = builder.exchangeStrategies(strategies).baseUrl("https://api.openalex.org").build(); // OpenAlex 基础 URL
+        this.openAlexClient = builder.exchangeStrategies(strategies).baseUrl("https://api.openalex.org").build(); // OpenAlex 基础 URL
         this.arxivClient = org.springframework.web.reactive.function.client.WebClient.builder()
                 .exchangeStrategies(strategies)
                 .defaultHeader("User-Agent", "AcademicSharingPlatform/0.1 (github:AcademicSharingPlatform)")
@@ -108,7 +108,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
             for (String cat : categories) {
                 try {
                     log.info("Fetching OpenAlex works for category {} (limit={})", cat, perCategoryCount);
-                    String body = webClient.get()
+                    String body = openAlexClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/works")
                             .queryParam("filter", "is_oa:true,concepts.display_name:" + cat)
                             .queryParam("per-page", String.valueOf(perCategoryCount))
@@ -334,7 +334,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
      */
     public String uploadWorkFromOpenAlexByArxiv(String arxivId) { // 根据 arXiv id 在 OpenAlex 查找并上传
         try {
-            String body = webClient.get()
+            String body = openAlexClient.get()
                     .uri(uriBuilder -> uriBuilder.path("/works")
                     .queryParam("filter", "ids.arxiv:" + arxivId)
                     .queryParam("per-page", "1")
