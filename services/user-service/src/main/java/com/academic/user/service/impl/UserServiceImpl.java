@@ -98,18 +98,18 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public String generateVerificationCode(String userId, String mail) throws ServiceError {
+        String validateId;
         if (userId != null) {
             mail = userMapper.selectOneByUserId(userId).getEmail();
-        } else {
-            userId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
         }
+        validateId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
 
         // allow request to provide an alternate mail address; fall back to user's email
         // if client provided a verification code in request, use it; otherwise generate one
         int codeInt = ThreadLocalRandom.current().nextInt(100000, 1000000);
         String code = String.format("%06d", codeInt);
         long expireAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10);
-        resetTokens.put(userId, new TokenEntry(code, expireAt));
+        resetTokens.put(validateId, new TokenEntry(code, expireAt));
 
         // send verification code via SMTP using configured JavaMailSender
         try {
@@ -126,27 +126,41 @@ public class UserServiceImpl implements UserService {
             // fallback
             throw new ServiceError("发送验证码失败", 0);
         }
-        return userId;
+        return validateId;
     }
 
     @Override
-    public boolean validateVerificationCode(String userId, String code) {
-        if (userId == null || userId.isEmpty() || code == null || code.isEmpty()) {
-            return false;
+    public void validateVerificationCode(String validateId, String code) throws ServiceError {
+        if (validateId == null || validateId.isEmpty() || code == null || code.isEmpty()) {
+            throw new ServiceError("参数错误", 0);
         }
-        TokenEntry entry = resetTokens.get(userId);
+        TokenEntry entry = resetTokens.get(validateId);
         if (entry == null) {
-            return false;
+            throw new ServiceError("参数错误", 0);
         }
         if (System.currentTimeMillis() > entry.expireAt) {
-            resetTokens.remove(userId);
-            return false;
+            resetTokens.remove(validateId);
+            throw new ServiceError("参数错误", 0);
         }
         if (entry.code.equals(code)) {
-            resetTokens.remove(userId);
-            return true;
+            resetTokens.remove(validateId);
+            return;
         }
-        return false;
+        throw new ServiceError("参数错误", 0);
+    }
+
+    @Override
+    public void resetPassword(String userId, String newPasswordHash) throws ServiceError {
+        User user = userMapper.selectOneByUserId(userId);
+        if (user == null) {
+            throw new ServiceError("用户不存在", 0);
+        }
+        user.setPasswordHash(newPasswordHash);
+        user.setUpdatedAt(LocalDateTime.now());
+        int r = userMapper.updateUser(user);
+        if (r == 0) {
+            throw new ServiceError("修改失败", 0);
+        }
     }
 
     @Override
