@@ -1,17 +1,19 @@
 package com.academic.user.dto;
 
-import com.academic.user.common.Role;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.time.LocalDateTime;
 
+import com.academic.user.common.Role;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
+@TableName("users")
 public class User {
 
     private String userId;
     private String username;
     private String email;
     @JsonProperty(value = "password", access = JsonProperty.Access.WRITE_ONLY)
+    @TableField("password_hash")
     private String passwordHash;
     private Role role;
     @TableField("display_name")
@@ -24,14 +26,14 @@ public class User {
     }
 
     public User(String userId, String username, String email, String passwordHash, Role role,
-            String displayBame, String avatarUrl, LocalDateTime createAt, LocalDateTime updateAt) {
+            String displayName, String avatarUrl, LocalDateTime createAt, LocalDateTime updateAt) {
         this.userId = userId;
         this.username = username;
         this.email = email;
+
         this.passwordHash = passwordHash;
         this.role = role;
-
-        this.displayName = displayBame;
+        this.displayName = displayName;
         this.avatarUrl = avatarUrl;
         this.createdAt = createAt;
         this.updatedAt = updateAt;
@@ -43,11 +45,11 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
-    public User(String username, String email, String passwordHash, String displayBame) {
+    public User(String username, String email, String passwordHash, String displayName) {
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
-        this.displayName = displayBame;
+        this.displayName = displayName;
     }
 
     public String getUserId() {

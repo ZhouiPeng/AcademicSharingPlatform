@@ -8,14 +8,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
+import com.academic.user.common.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-import com.academic.user.common.DefaultConfig;
-import com.academic.user.common.Role;
-import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
 import com.academic.user.mapper.UserMapper;
 import com.academic.user.service.UserService;
@@ -97,22 +95,23 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String generateVerificationCode(String userId, String mail) throws ServiceError {
+    public String generateVerificationCode(String userId, String mail) throws Exception {
+        String validateId;
         if (userId != null) {
-            mail = userMapper.selectOneByUserId(userId).getEmail();
-        } else {
-            userId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
+            User user = userMapper.selectOneByUserId(userId);
+            mail = user.getEmail();
         }
+//        System.out.println("邮箱："+ mail);
+        validateId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
 
         // allow request to provide an alternate mail address; fall back to user's email
         // if client provided a verification code in request, use it; otherwise generate one
         int codeInt = ThreadLocalRandom.current().nextInt(100000, 1000000);
         String code = String.format("%06d", codeInt);
         long expireAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(10);
-        resetTokens.put(userId, new TokenEntry(code, expireAt));
+        resetTokens.put(validateId, new TokenEntry(code, expireAt));
 
         // send verification code via SMTP using configured JavaMailSender
-        try {
             SimpleMailMessage message = new SimpleMailMessage();
             String from = System.getenv("SMTP_USER");
             if (from != null && !from.isEmpty()) {
@@ -122,31 +121,42 @@ public class UserServiceImpl implements UserService {
             message.setSubject("[user-service] 验证码 / Verification Code");
             message.setText("您的验证码是: " + code + "。有效期 10 分钟。\nIf you didn't request this, please ignore this email.");
             mailSender.send(message);
-        } catch (Exception e) {
-            // fallback
-            throw new ServiceError("发送验证码失败", 0);
-        }
-        return userId;
+        return validateId;
     }
 
     @Override
-    public boolean validateVerificationCode(String userId, String code) {
-        if (userId == null || userId.isEmpty() || code == null || code.isEmpty()) {
-            return false;
+    public void validateVerificationCode(String validateId, String code) throws ServiceError {
+        if (validateId == null || validateId.isEmpty() || code == null || code.isEmpty()) {
+            throw new ServiceError("参数错误", 0);
         }
-        TokenEntry entry = resetTokens.get(userId);
+        TokenEntry entry = resetTokens.get(validateId);
         if (entry == null) {
-            return false;
+            throw new ServiceError("参数错误", 0);
         }
-        if (System.currentTimeMillis() > entry.expireAt) {
-            resetTokens.remove(userId);
-            return false;
+        if (System.currentTimeMillis() > entry.expireAt()) {
+            resetTokens.remove(validateId);
+            throw new ServiceError("参数错误", 0);
         }
-        if (entry.code.equals(code)) {
-            resetTokens.remove(userId);
-            return true;
+        if (entry.code().equals(code)) {
+            resetTokens.remove(validateId);
+            return;
         }
-        return false;
+        throw new ServiceError("参数错误", 0);
+    }
+
+    @Override
+    public void resetPassword(String userId, String newPasswordHash) throws Exception
+    {
+        User user = userMapper.selectOneByUserId(userId);
+        if (user == null) {
+            throw new ServiceError("用户不存在", 0);
+        }
+        user.setPasswordHash(Secure.sha256(newPasswordHash));
+        user.setUpdatedAt(LocalDateTime.now());
+        int r = userMapper.updateUser(user);
+        if (r == 0) {
+            throw new ServiceError("修改失败", 0);
+        }
     }
 
     @Override
@@ -205,15 +215,15 @@ public class UserServiceImpl implements UserService {
         page.setRecords(userList);
         return page;
     }
-}
 
-class TokenEntry {
-
-    final String code;
-    final long expireAt;
-
-    TokenEntry(String code, long expireAt) {
-        this.code = code;
-        this.expireAt = expireAt;
+    @Override
+    public IPage<User> getUsers(int pageNum, int pageSize)
+    {
+        int count = userMapper.count();
+        IPage<User> page = new Page<>(pageNum, pageSize, count);
+        IPage<User> result = userMapper.selectPage(page, null);
+        return result;
     }
+
 }
+

@@ -6,6 +6,8 @@ import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
+import java.security.NoSuchAlgorithmException;
+
 @Service
 public interface UserService {
 
@@ -19,9 +21,12 @@ public interface UserService {
 
     void updateCurrent(User user) throws ServiceError;
 
-    String generateVerificationCode(String userId, String mail) throws ServiceError;
+    String generateVerificationCode(String userId, String mail) throws Exception;
 
-    boolean validateVerificationCode(String userId, String code);
+    void validateVerificationCode(String validateId, String code) throws ServiceError;
+
+    void resetPassword(String userId, String newPasswordHash) throws ServiceError, NoSuchAlgorithmException, Exception;
+
 
     void follow(String targetId, String userId) throws ServiceError;
 
@@ -31,4 +36,5 @@ public interface UserService {
 
     IPage<User> getFans(String userId, int pageNum, int pageSize);
 
+    IPage<User> getUsers(int pageNum, int pageSize);
 }
