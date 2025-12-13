@@ -48,6 +48,9 @@
     <select id="countByFolloeeId" resultType="java.lang.Integer">
         select count(*) from user_follows where followee_id = #{userId}
     </select>
+    <select id="count" resultType="java.lang.Integer">
+        select count(*) from users;
+    </select>
 
     <update id="updateUser" parameterType="com.academic.user.dto.User">
         update users

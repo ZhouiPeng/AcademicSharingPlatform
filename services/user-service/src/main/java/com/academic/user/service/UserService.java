@@ -36,4 +36,5 @@ public interface UserService {
 
     IPage<User> getFans(String userId, int pageNum, int pageSize);
 
+    IPage<User> getUsers(int pageNum, int pageSize);
 }

@@ -80,6 +80,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
         }
     }
@@ -105,6 +106,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙");
         }
 
@@ -120,6 +122,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
         }
 
@@ -148,6 +151,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
@@ -176,6 +180,7 @@ public class UserController {
             return ApiResponse.fail(0, e.getMessage());
         }
         catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
         }
     }
@@ -203,6 +208,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
@@ -228,6 +234,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
@@ -254,6 +261,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
@@ -279,6 +287,7 @@ public class UserController {
         } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
         } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
@@ -304,6 +313,32 @@ public class UserController {
         } catch (JwtException e) {
             return ApiResponse.fail(-1, "Token无效,请重新登录");
         } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.fail(-1, "服务器繁忙");
+        }
+    }
+
+    //查看用户
+    @GetMapping("")
+    @ResponseBody
+    public String getUsers(
+                             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
+                             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        try {
+            IPage<User> userPage = userService.getUsers(pageNum, pageSize);
+            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+        } catch (ExpiredJwtException e) {
+            return ApiResponse.fail(-1, "登陆状态已过期");
+        } catch (MalformedJwtException e) {
+            return ApiResponse.fail(-1, "Token格式错误");
+        } catch (UnsupportedJwtException e) {
+            return ApiResponse.fail(-1, "Token不被支持");
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.fail(-1, "Token为空或无效");
+        } catch (JwtException e) {
+            return ApiResponse.fail(-1, "Token无效,请重新登录");
+        } catch (Exception e) {
+            e.printStackTrace();
             return ApiResponse.fail(-1, "服务器繁忙");
         }
     }

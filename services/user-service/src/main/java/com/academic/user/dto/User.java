@@ -4,8 +4,9 @@ import java.time.LocalDateTime;
 
 import com.academic.user.common.Role;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+@TableName("users")
 public class User {
 
     private String userId;

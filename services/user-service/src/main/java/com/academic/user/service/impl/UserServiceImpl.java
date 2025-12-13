@@ -1,6 +1,5 @@
 package com.academic.user.service.impl;
 
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,15 +8,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-import com.academic.user.common.Secure;
+import com.academic.user.common.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-import com.academic.user.common.DefaultConfig;
-import com.academic.user.common.Role;
-import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
 import com.academic.user.mapper.UserMapper;
 import com.academic.user.service.UserService;
@@ -137,11 +133,11 @@ public class UserServiceImpl implements UserService {
         if (entry == null) {
             throw new ServiceError("参数错误", 0);
         }
-        if (System.currentTimeMillis() > entry.expireAt) {
+        if (System.currentTimeMillis() > entry.expireAt()) {
             resetTokens.remove(validateId);
             throw new ServiceError("参数错误", 0);
         }
-        if (entry.code.equals(code)) {
+        if (entry.code().equals(code)) {
             resetTokens.remove(validateId);
             return;
         }
@@ -219,15 +215,15 @@ public class UserServiceImpl implements UserService {
         page.setRecords(userList);
         return page;
     }
-}
 
-class TokenEntry {
-
-    final String code;
-    final long expireAt;
-
-    TokenEntry(String code, long expireAt) {
-        this.code = code;
-        this.expireAt = expireAt;
+    @Override
+    public IPage<User> getUsers(int pageNum, int pageSize)
+    {
+        int count = userMapper.count();
+        IPage<User> page = new Page<>(pageNum, pageSize, count);
+        IPage<User> result = userMapper.selectPage(page, null);
+        return result;
     }
+
 }
+
