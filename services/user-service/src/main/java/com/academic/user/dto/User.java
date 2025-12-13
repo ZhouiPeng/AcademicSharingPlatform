@@ -12,6 +12,7 @@ public class User {
     private String username;
     private String email;
     @JsonProperty(value = "password", access = JsonProperty.Access.WRITE_ONLY)
+    @TableField("password_hash")
     private String passwordHash;
     private Role role;
     @TableField("display_name")

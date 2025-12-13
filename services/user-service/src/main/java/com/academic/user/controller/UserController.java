@@ -3,6 +3,7 @@ package com.academic.user.controller;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.mail.MailException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -154,12 +155,14 @@ public class UserController {
     //发送验证码
     @PostMapping("/verification/send")
     @ResponseBody
-    public String registerValidation(@RequestHeader(name = "Authorization", required = false) String token, @RequestBody Map<String, String> requestBody) {
+    public String registerValidation(@RequestHeader(name = "Authorization", required = false) String token,
+                                     @RequestBody(required = false) Map<String, String> requestBody) {
         try {
             if (token != null && !token.isEmpty()) {
                 String userId = JwtUtil.analyseToken(token);
                 String validateId = userService.generateVerificationCode(userId, null);
-                return ApiResponse.success("验证码已发送，请检查邮箱", validateId);
+                data.put("validateId", validateId);
+                return ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(data));
             }
             if (requestBody.get("mail") == null || requestBody.get("mail").isEmpty()) {
                 return ApiResponse.fail(-1, "邮箱不能为空");
@@ -168,7 +171,11 @@ public class UserController {
             return ApiResponse.success("验证码已发送，请检查邮箱", validateId);
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
-        } catch (Exception e) {
+        } catch(MailException e)
+        {
+            return ApiResponse.fail(0, e.getMessage());
+        }
+        catch (Exception e) {
             return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
         }
     }

@@ -1,5 +1,6 @@
 package com.academic.user.service.impl;
 
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
+import com.academic.user.common.Secure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -97,11 +99,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String generateVerificationCode(String userId, String mail) throws ServiceError {
+    public String generateVerificationCode(String userId, String mail) throws Exception {
         String validateId;
         if (userId != null) {
-            mail = userMapper.selectOneByUserId(userId).getEmail();
+            User user = userMapper.selectOneByUserId(userId);
+            mail = user.getEmail();
         }
+//        System.out.println("邮箱："+ mail);
         validateId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
 
         // allow request to provide an alternate mail address; fall back to user's email
@@ -112,7 +116,6 @@ public class UserServiceImpl implements UserService {
         resetTokens.put(validateId, new TokenEntry(code, expireAt));
 
         // send verification code via SMTP using configured JavaMailSender
-        try {
             SimpleMailMessage message = new SimpleMailMessage();
             String from = System.getenv("SMTP_USER");
             if (from != null && !from.isEmpty()) {
@@ -122,10 +125,6 @@ public class UserServiceImpl implements UserService {
             message.setSubject("[user-service] 验证码 / Verification Code");
             message.setText("您的验证码是: " + code + "。有效期 10 分钟。\nIf you didn't request this, please ignore this email.");
             mailSender.send(message);
-        } catch (Exception e) {
-            // fallback
-            throw new ServiceError("发送验证码失败", 0);
-        }
         return validateId;
     }
 
@@ -150,22 +149,18 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void resetPassword(String userId, String newPasswordHash) throws ServiceError {
+    public void resetPassword(String userId, String newPasswordHash) throws Exception
+    {
         User user = userMapper.selectOneByUserId(userId);
         if (user == null) {
             throw new ServiceError("用户不存在", 0);
         }
-        user.setPasswordHash(newPasswordHash);
+        user.setPasswordHash(Secure.sha256(newPasswordHash));
         user.setUpdatedAt(LocalDateTime.now());
         int r = userMapper.updateUser(user);
         if (r == 0) {
             throw new ServiceError("修改失败", 0);
         }
-    }
-    @Override
-    public boolean resetPassword(String userId, String code) {
-
-        return false;
     }
 
     @Override

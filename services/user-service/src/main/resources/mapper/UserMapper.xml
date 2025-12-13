@@ -61,6 +61,9 @@
             <if test="#{email} != null and #{email} != ''">
                 email = #{email},
             </if>
+            <if test="#{passwordHash} != null and #{passwordHash} != ''">
+                password_hash = #{passwordHash},
+            </if>
         </trim>
         <where>
             user_id = #{userId};
