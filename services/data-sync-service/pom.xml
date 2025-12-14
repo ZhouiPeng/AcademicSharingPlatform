@@ -38,6 +38,7 @@
         </dependency>
     </dependencies>
     <build>
+        <finalName>data-sync-service</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

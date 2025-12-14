@@ -15,7 +15,7 @@ if [ -z "$MONGO_USER" ]; then
   exit 0
 fi
 
-TARGET_DB=${ADMIN_DB_NAME}
+TARGET_DB=${MONGO_ADMIN_DB_NAME}
 
 echo "Creating MongoDB user '$MONGO_USER' with dbOwner on '$TARGET_DB' (if not exists)"
 

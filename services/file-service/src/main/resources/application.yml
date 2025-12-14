@@ -7,16 +7,16 @@ springdoc:
     path: /swagger-ui/index.html
 
 obs:
-  endpoint: ${OBS_ENDPOINT:https://obs.cn-north-4.myhuaweicloud.com}
-  accessKey: ${OBS_ACCESS_KEY:}
-  secretKey: ${OBS_SECRET_KEY:}
-  bucket: ${OBS_BUCKET:team13-file}
+  endpoint: ${OBS_ENDPOINT}
+  accessKey: ${OBS_ACCESS_KEY}
+  secretKey: ${OBS_SECRET_KEY}
+  bucket: ${OBS_BUCKET}
 
 spring:
   datasource:
-    url: jdbc:mysql://${DB_HOST:124.70.81.32}:${DB_PORT:3306}/${DB_NAME:file_service}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
-    username: ${DB_USERNAME:buaa}
-    password: "${DB_PASSWORD:Password@#@114514}"
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_FILE_DB_NAME}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
+    username: ${MYSQL_USER}
+    password: ${MYSQL_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate

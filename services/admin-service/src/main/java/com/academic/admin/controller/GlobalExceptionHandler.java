@@ -44,6 +44,12 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(400, ex.getMessage()));
 	}
 
+	@ExceptionHandler(IllegalStateException.class)
+	@ResponseBody
+	public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(404, ex.getMessage()));
+	}
+
 	@ExceptionHandler(Exception.class)
 	@ResponseBody
 	public ResponseEntity<ApiResponse<Void>> handleAll(Exception ex) {

@@ -25,7 +25,7 @@ public class AdminController {
     @PostMapping("/authentication/{userId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> createAuthentication(
         @PathVariable @NotBlank String userId,
-        @RequestBody AuthRequest requestBody) {
+        @RequestBody @Valid AuthRequest requestBody) {
         String status = adminService.createAuthentication(userId, requestBody);
         return ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status)));
     }
@@ -38,7 +38,7 @@ public class AdminController {
     @PutMapping("/authentication/{formId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> processAuthentication(
         @PathVariable @NotBlank String formId,
-        @Valid @RequestBody ProcessRequest requestBody) {
+        @RequestBody @Valid ProcessRequest requestBody) {
         String status = adminService.processAuthentication(formId, requestBody);
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
     }
@@ -46,7 +46,7 @@ public class AdminController {
     @PostMapping("/report/{reporterId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> createReport(
         @PathVariable @NotBlank String reporterId, 
-        @Valid @RequestBody ReportRequest req) {
+        @RequestBody @Valid ReportRequest req) {
         String status = adminService.createReport(reporterId, req);
         return ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status)));
     }
@@ -59,21 +59,30 @@ public class AdminController {
     @PutMapping("/report/{reportId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> processReport(
         @PathVariable @NotBlank String reportId,
-        @Valid @RequestBody ProcessRequest req) {
+        @RequestBody @Valid ProcessRequest req) {
         String status = adminService.processReport(reportId, req);
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
     }
 
 
     @PostMapping("/information")
-    public ResponseEntity<ApiResponse<Void>> sendInformation(@Valid @RequestBody InformationRequest req) {
+    public ResponseEntity<ApiResponse<Void>> sendInformation(@RequestBody @Valid SendInfoRequest req) {
         adminService.sendInformation(req);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @PutMapping("/information/{userId}")
-    public ResponseEntity<ApiResponse<Void>> readInformation(@Valid @RequestBody InformationRequest req) {
-        adminService.readInformation(req);
+    public ResponseEntity<ApiResponse<Void>> readInformation(
+        @PathVariable @NotBlank String userId,
+        @RequestBody @Valid RODInfoRequest req) {
+        adminService.readInformation(userId, req.getId());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @DeleteMapping("/information")
+    public ResponseEntity<ApiResponse<Void>> deleteInformation(
+        @RequestBody @Valid RODInfoRequest req) {
+        adminService.deleteInformation(req.getId());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

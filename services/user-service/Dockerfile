@@ -1,11 +1,8 @@
-FROM maven:3.9.4-eclipse-temurin-17 AS build
-WORKDIR /app
-COPY pom.xml ./
-COPY src ./src
-RUN mvn -B package -DskipTests
-
-FROM eclipse-temurin:17-jre
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 3001
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+FROM eclipse-temurin:17-jdk-jammy
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+USER appuser
+WORKDIR /user-service
+ARG JAR_FILE=target/user-service.jar
+COPY ${JAR_FILE} app.jar
+EXPOSE 8001
+CMD ["java", "-jar", "app.jar"]

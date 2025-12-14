@@ -17,16 +17,23 @@ docker context ls
 
 2) Run compose on ECS (remote build/pull and start)
 ```powershell
-docker --context ecs compose --env-file .env -f docker-compose-db.yml up -d
+docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml up -d
+```
 
 # Check remote status and logs
-docker --context ecs compose --env-file .env -f docker-compose-db.yml ps
-docker --context ecs compose --env-file .env -f docker-compose-db.yml logs mysql-db -f
+```powershell
+docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml ps
+docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml logs mysql -f
 ```
 
 3) Recompose
 ```powershell
-docker --context ecs compose --env-file .env -f docker-compose-db.yml stop
-docker --context ecs compose --env-file .env -f docker-compose-db.yml rm -f
-docker --context ecs compose --env-file .env -f docker-compose-db.yml up --build -d
+docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml stop
+docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml rm -f
+docker volume rm $(docker --context ecs volume ls -q)
+docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml up --build -d
 ```
+
+Notes
+- Keep sensitive values in a local `.env` (do not commit).
+- Use `docker compose -f ... config` locally to validate merged config before deploying.

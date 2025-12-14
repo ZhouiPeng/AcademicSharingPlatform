@@ -8,10 +8,7 @@ import lombok.AllArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReportRequest {
+public class RODInfoRequest {
     @NotBlank 
-    private String type; //USER, CONTENT, OTHER
-    @NotBlank 
-    private String targetId;
-    private String reason;
+    private String id;
 }

@@ -17,6 +17,9 @@ public class FileEntity {
     @Column(length = 36)
     private String id;
 
+    @Column(name = "type", length = 64, nullable = false) // PAPER, APPLICATION etc.
+    private String type;
+
     @Column(name = "name", length = 255, nullable = false)
     private String name;
 

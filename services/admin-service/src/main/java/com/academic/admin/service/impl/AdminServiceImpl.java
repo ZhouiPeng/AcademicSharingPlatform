@@ -61,7 +61,7 @@ public class AdminServiceImpl implements AdminService {
             .build();
         authRequestRepository.save(auth);
 
-        InformationRequest info = new InformationRequest();
+        SendInfoRequest info = new SendInfoRequest();
         info.setTargetGroup(assignedAdmin);
         info.setTitle("门户认证申请通知");
         info.setContent("用户(" + userId + ")申请门户认证");
@@ -85,13 +85,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<AuthDto> listAuthentications(String userId) {
-        if (userId == null || userId.isEmpty()) return null;
-
         List<AuthRequestEntity> ents = authRequestRepository.findByApplicantUserIdOrderByCreatedAtDesc(userId);
-        if (ents == null || ents.isEmpty()) return null;
         List<AuthDto> res = new ArrayList<>(ents.size());
         for (AuthRequestEntity e : ents) {
-            if (e == null) continue;
             String st = e.getStatus();
             if (st == null || !"PENDING".equalsIgnoreCase(st)) continue;
             AuthDto d = AuthDto.builder()
@@ -114,15 +110,11 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public String processAuthentication(String formId, ProcessRequest req) {
-        if (formId == null || formId.isEmpty() || req == null || req.getStatus() == null || req.getStatus().isEmpty()) {
-            return null;
-        }
-
-        AuthRequestEntity ent = authRequestRepository.findById(formId).orElse(null);
+        AuthRequestEntity ent = authRequestRepository.findById(formId).orElseThrow(() -> new IllegalStateException("authentication form not found: " + formId));
         ent.setStatus(req.getStatus());
         authRequestRepository.save(ent);
 
-        InformationRequest info = new InformationRequest();
+        SendInfoRequest info = new SendInfoRequest();
         info.setTargetGroup(req.getUserId());
         info.setTitle("门户认证申请处理结果通知");
         info.setContent("申请结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
@@ -146,7 +138,7 @@ public class AdminServiceImpl implements AdminService {
                 .build();
         reportRepository.save(r);
 
-        InformationRequest info = new InformationRequest();
+        SendInfoRequest info = new SendInfoRequest();
         info.setTargetGroup(assignedAdmin);
         info.setTitle("举报通知");
         String target;
@@ -165,13 +157,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<ReportDto> listReports(String reporterId) {
-        if (reporterId == null || reporterId.isEmpty()) return null;
-
         List<ReportEntity> ents = reportRepository.findByReporterIdOrderByCreatedAtDesc(reporterId);
-        if (ents == null || ents.isEmpty()) return null;
         List<ReportDto> res = new ArrayList<>(ents.size());
         for (ReportEntity e : ents) {
-            if (e == null) continue;
             String st = e.getStatus();
             if (st == null || !"PENDING".equalsIgnoreCase(st)) continue;
             ReportDto d = ReportDto.builder()
@@ -189,16 +177,11 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public String processReport(String reportId, ProcessRequest req) {
-        if (reportId == null || reportId.isEmpty() || req == null || req.getStatus() == null || req.getStatus().isEmpty()) {
-            return null;
-        }
-
-        ReportEntity ent = reportRepository.findById(reportId).orElse(null);
+        ReportEntity ent = reportRepository.findById(reportId).orElseThrow(() -> new IllegalStateException("report not found: " + reportId));
         ent.setStatus(req.getStatus());
         reportRepository.save(ent);
 
-        // notify reporter
-        InformationRequest info = new InformationRequest();
+        SendInfoRequest info = new SendInfoRequest();
         info.setTargetGroup(ent.getReporterId());
         info.setTitle("举报处理结果通知");
         info.setContent("举报处理结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
@@ -208,7 +191,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public void sendInformation(InformationRequest req) {
+    public void sendInformation(SendInfoRequest req) {
         if(req.getTargetGroup() == null || req.getTargetGroup().isEmpty()) {
             throw new IllegalArgumentException("Target group cannot be null or empty");
         }
@@ -288,12 +271,26 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    public void readInformation(String userId, String id) {
+        UserMessageState s = stateRepository.findByUserIdAndMessageId(userId, id);
+        s.setState("READ");
+        stateRepository.save(s);
+    }
+
+    @Override
+    public void deleteInformation(String id) {
+        if (messageRepository.existsById(id)) {
+            messageRepository.deleteById(id);
+        }
+        stateRepository.deleteByMessageId(id);
+    }
+
+    @Override
     public List<InformationDto> getInformation(String userId) {
         List<UserMessageState> states = stateRepository.findByUserIdOrderByUpdatedAtDesc(userId);
         List<InformationDto> res = new ArrayList<>(states.size());
         for (UserMessageState s : states) {
-            if (s == null || s.getMessageId() == null) continue;
-            Message ent = messageRepository.findById(s.getMessageId()).orElse(null);
+            Message ent = messageRepository.findById(s.getMessageId()).orElseThrow(() -> new IllegalStateException("message not found: " + s.getMessageId()));
             InformationDto dto = new InformationDto();
             dto.setId(ent.getId());
             dto.setTitle(ent.getTitle());

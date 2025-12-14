@@ -26,13 +26,14 @@ public class FileServiceImpl implements FileService {
     @Transactional
     public FileUploadDto uploadFile(String uploaderId, MultipartFile file, FileUploadRequest req) {
         String fileId = UUID.randomUUID().toString();
-        String fileName = req.getFilename();
+        String fileName = req.getFileName();
+        String fileType = req.getFileType();
         String objectKey = null;
         long size = 0L;
 
         if (file != null && !file.isEmpty()) {
             size = file.getSize();
-            objectKey = "papers/" + (fileName == null ? "unknown" : fileName);
+            objectKey = "papers/" + fileType + "/" + fileName;
             if (fileRepository.deleteByObjectKey(objectKey) > 0) {
                 fileRepository.flush();
             }
@@ -41,6 +42,7 @@ public class FileServiceImpl implements FileService {
         
         FileEntity.FileEntityBuilder builder = FileEntity.builder()
             .id(fileId)
+            .type(fileType)
             .name(fileName)
             .uploaderId(uploaderId)
             .url(req.getUrl())
