@@ -22,6 +22,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class AdminServiceImpl implements AdminService {
+
     private final MessageRepository messageRepository;
     private final UserMessageStateRepository stateRepository;
     private final WebClient userWebClient;
@@ -29,10 +30,10 @@ public class AdminServiceImpl implements AdminService {
     private final ReportRepository reportRepository;
 
     public AdminServiceImpl(MessageRepository messageRepository,
-                            UserMessageStateRepository stateRepository,
-                            AuthRequestRepository authRequestRepository,
-                            ReportRepository reportRepository,
-                            @Value("${USER_SERVICE_URL:http://localhost:8081}") String userServiceUrl) {
+            UserMessageStateRepository stateRepository,
+            AuthRequestRepository authRequestRepository,
+            ReportRepository reportRepository,
+            @Value("${USER_SERVICE_URL:http://localhost:8081}") String userServiceUrl) {
         this.messageRepository = messageRepository;
         this.stateRepository = stateRepository;
         this.authRequestRepository = authRequestRepository;
@@ -45,20 +46,20 @@ public class AdminServiceImpl implements AdminService {
         String assignedAdmin = assignedAdmin();
         String status = "PENDING";
 
-        AuthRequestEntity auth= AuthRequestEntity.builder()
-            .id(UUID.randomUUID().toString())
-            .applicantUserId(userId)
-            .assignedAdminId(assignedAdmin)
-            .realName(req.getRealName())
-            .idNumber(req.getIdNumber())
-            .phone(req.getPhone())
-            .organization(req.getOrganization())
-            .position(req.getPosition())
-            .applicationReason(req.getApplicationReason())
-            .authType(req.getAuthType())
-            .attachments(req.getAttachments())
-            .status(status)
-            .build();
+        AuthRequestEntity auth = AuthRequestEntity.builder()
+                .id(UUID.randomUUID().toString())
+                .applicantUserId(userId)
+                .assignedAdminId(assignedAdmin)
+                .realName(req.getRealName())
+                .idNumber(req.getIdNumber())
+                .phone(req.getPhone())
+                .organization(req.getOrganization())
+                .position(req.getPosition())
+                .applicationReason(req.getApplicationReason())
+                .authType(req.getAuthType())
+                .attachments(req.getAttachments())
+                .status(status)
+                .build();
         authRequestRepository.save(auth);
 
         SendInfoRequest info = new SendInfoRequest();
@@ -89,20 +90,22 @@ public class AdminServiceImpl implements AdminService {
         List<AuthDto> res = new ArrayList<>(ents.size());
         for (AuthRequestEntity e : ents) {
             String st = e.getStatus();
-            if (st == null || !"PENDING".equalsIgnoreCase(st)) continue;
+            if (st == null || !"PENDING".equalsIgnoreCase(st)) {
+                continue;
+            }
             AuthDto d = AuthDto.builder()
-                .userId(userId)
-                .formId(e.getId())
-                .realName(e.getRealName())
-                .idNumber(e.getIdNumber())
-                .phone(e.getPhone())
-                .organization(e.getOrganization())
-                .position(e.getPosition())
-                .applicationReason(e.getApplicationReason())
-                .authType(e.getAuthType())
-                .attachments(e.getAttachments())
-                .createdAt(e.getCreatedAt().toString())
-                .build();
+                    .userId(userId)
+                    .formId(e.getId())
+                    .realName(e.getRealName())
+                    .idNumber(e.getIdNumber())
+                    .phone(e.getPhone())
+                    .organization(e.getOrganization())
+                    .position(e.getPosition())
+                    .applicationReason(e.getApplicationReason())
+                    .authType(e.getAuthType())
+                    .attachments(e.getAttachments())
+                    .createdAt(e.getCreatedAt().toString())
+                    .build();
             res.add(d);
         }
         return res;
@@ -161,15 +164,17 @@ public class AdminServiceImpl implements AdminService {
         List<ReportDto> res = new ArrayList<>(ents.size());
         for (ReportEntity e : ents) {
             String st = e.getStatus();
-            if (st == null || !"PENDING".equalsIgnoreCase(st)) continue;
+            if (st == null || !"PENDING".equalsIgnoreCase(st)) {
+                continue;
+            }
             ReportDto d = ReportDto.builder()
-                .reporterId(e.getReporterId())
-                .reportId(e.getId())
-                .type(e.getType())
-                .targetId(e.getTargetId())
-                .reason(e.getReason())
-                .createdAt(e.getCreatedAt().toString())
-                .build();
+                    .reporterId(e.getReporterId())
+                    .reportId(e.getId())
+                    .type(e.getType())
+                    .targetId(e.getTargetId())
+                    .reason(e.getReason())
+                    .createdAt(e.getCreatedAt().toString())
+                    .build();
             res.add(d);
         }
         return res;
@@ -192,7 +197,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public void sendInformation(SendInfoRequest req) {
-        if(req.getTargetGroup() == null || req.getTargetGroup().isEmpty()) {
+        if (req.getTargetGroup() == null || req.getTargetGroup().isEmpty()) {
             throw new IllegalArgumentException("Target group cannot be null or empty");
         }
         String target = req.getTargetGroup();
@@ -225,11 +230,11 @@ public class AdminServiceImpl implements AdminService {
 
         for (String userId : recipients) {
             UserMessageState state = UserMessageState.builder()
-                .id(UUID.randomUUID().toString())
-                .userId(userId)
-                .messageId(saved.getId())
-                .state("UNREAD")
-                .build();
+                    .id(UUID.randomUUID().toString())
+                    .userId(userId)
+                    .messageId(saved.getId())
+                    .state("UNREAD")
+                    .build();
             stateRepository.save(state);
         }
     }
@@ -238,11 +243,16 @@ public class AdminServiceImpl implements AdminService {
         Map<String, Object> resp = userWebClient.get()
                 .uri("/users/{userId}", userId)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .block();
-        if (resp == null) throw new IllegalStateException("user-service returned null for user " + userId);
-        Map<String, String> data = (Map<String, String>)resp.get("data");
-        if (data == null) throw new IllegalStateException("user data missing for " + userId);
+        if (resp == null) {
+            throw new IllegalStateException("user-service returned null for user " + userId);
+        }
+        Map<String, String> data = (Map<String, String>) resp.get("data");
+        if (data == null) {
+            throw new IllegalStateException("user data missing for " + userId);
+        }
         return data;
     }
 
@@ -250,11 +260,16 @@ public class AdminServiceImpl implements AdminService {
         Map<String, Object> resp = userWebClient.get()
                 .uri("/users")
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .block();
-        if (resp == null) throw new IllegalStateException("user-service returned null");
-        List<Map<String, String>> data = (List<Map<String, String>>)resp.get("data");
-        if (data == null) throw new IllegalStateException("user data missing");
+        if (resp == null) {
+            throw new IllegalStateException("user-service returned null");
+        }
+        List<Map<String, String>> data = (List<Map<String, String>>) resp.get("data");
+        if (data == null) {
+            throw new IllegalStateException("user data missing");
+        }
         return data;
     }
 
@@ -262,11 +277,16 @@ public class AdminServiceImpl implements AdminService {
         Map<String, Object> resp = userWebClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/groups/{group}/users").build(group))
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .block();
-        if (resp == null) throw new IllegalStateException("user-service returned null for group");
-        List<Map<String, String>> data = (List<Map<String, String>>)resp.get("data");
-        if (data == null) throw new IllegalStateException("user data missing for group");
+        if (resp == null) {
+            throw new IllegalStateException("user-service returned null for group");
+        }
+        List<Map<String, String>> data = (List<Map<String, String>>) resp.get("data");
+        if (data == null) {
+            throw new IllegalStateException("user data missing for group");
+        }
         return data;
     }
 

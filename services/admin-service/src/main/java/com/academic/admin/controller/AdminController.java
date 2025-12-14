@@ -1,4 +1,5 @@
 package com.academic.admin.controller;
+
 import com.academic.admin.dto.*;
 import com.academic.admin.service.AdminService;
 import org.springframework.http.ResponseEntity;
@@ -24,29 +25,29 @@ public class AdminController {
 
     @PostMapping("/authentication/{userId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> createAuthentication(
-        @PathVariable @NotBlank String userId,
-        @RequestBody @Valid AuthRequest requestBody) {
+            @PathVariable @NotBlank String userId,
+            @RequestBody @Valid AuthRequest requestBody) {
         String status = adminService.createAuthentication(userId, requestBody);
         return ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status)));
     }
 
     @GetMapping("/authentication/{userId}")
-    public ResponseEntity<ApiResponse<List<AuthDto>>> listAuthentications( @PathVariable @NotBlank String userId) {
+    public ResponseEntity<ApiResponse<List<AuthDto>>> listAuthentications(@PathVariable @NotBlank String userId) {
         return ResponseEntity.ok(ApiResponse.success(adminService.listAuthentications(userId)));
     }
 
     @PutMapping("/authentication/{formId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> processAuthentication(
-        @PathVariable @NotBlank String formId,
-        @RequestBody @Valid ProcessRequest requestBody) {
+            @PathVariable @NotBlank String formId,
+            @RequestBody @Valid ProcessRequest requestBody) {
         String status = adminService.processAuthentication(formId, requestBody);
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
     }
 
     @PostMapping("/report/{reporterId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> createReport(
-        @PathVariable @NotBlank String reporterId, 
-        @RequestBody @Valid ReportRequest req) {
+            @PathVariable @NotBlank String reporterId,
+            @RequestBody @Valid ReportRequest req) {
         String status = adminService.createReport(reporterId, req);
         return ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status)));
     }
@@ -58,12 +59,11 @@ public class AdminController {
 
     @PutMapping("/report/{reportId}")
     public ResponseEntity<ApiResponse<Map<String, String>>> processReport(
-        @PathVariable @NotBlank String reportId,
-        @RequestBody @Valid ProcessRequest req) {
+            @PathVariable @NotBlank String reportId,
+            @RequestBody @Valid ProcessRequest req) {
         String status = adminService.processReport(reportId, req);
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
     }
-
 
     @PostMapping("/information")
     public ResponseEntity<ApiResponse<Void>> sendInformation(@RequestBody @Valid SendInfoRequest req) {
@@ -73,15 +73,15 @@ public class AdminController {
 
     @PutMapping("/information/{userId}")
     public ResponseEntity<ApiResponse<Void>> readInformation(
-        @PathVariable @NotBlank String userId,
-        @RequestBody @Valid RODInfoRequest req) {
+            @PathVariable @NotBlank String userId,
+            @RequestBody @Valid RODInfoRequest req) {
         adminService.readInformation(userId, req.getId());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @DeleteMapping("/information")
     public ResponseEntity<ApiResponse<Void>> deleteInformation(
-        @RequestBody @Valid RODInfoRequest req) {
+            @RequestBody @Valid RODInfoRequest req) {
         adminService.deleteInformation(req.getId());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
