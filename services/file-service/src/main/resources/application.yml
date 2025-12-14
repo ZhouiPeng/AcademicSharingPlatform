@@ -1,6 +1,7 @@
 server:
   port: 8083
 
+
 springdoc:
   swagger-ui:
     enabled: true
@@ -16,7 +17,7 @@ spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:124.70.81.32}:${DB_PORT:3306}/${DB_NAME:file_service}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
     username: ${DB_USERNAME:buaa}
-    password: "${DB_PASSWORD:Password@#@114514}"
+    password: "${DB_PASSWORD:Password@^@114514}"
   jpa:
     hibernate:
       ddl-auto: validate

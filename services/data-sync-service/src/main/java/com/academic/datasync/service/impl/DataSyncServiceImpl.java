@@ -2,36 +2,43 @@
 package com.academic.datasync.service.impl; // 定义包名
 
 // 引入需要的类与接口，下面每行都附带中文注释以说明用途
-import java.io.StringReader; // 用于把字符串包装为 Reader 以便 XML 解析
-import java.net.URLEncoder; // 用于对 arXiv 查询字符串进行 URL 编码
-import java.nio.charset.StandardCharsets; // 提供标准字符集常量（UTF-8）
-import java.time.Duration; // 表示时间段，用于 WebClient 的超时
-import java.util.HashMap; // 提供 HashMap 实现
-import java.util.Iterator; // 用于遍历集合的迭代器
-import java.util.List; // Map 接口，用于构建上报负载
-import java.util.Map; // 正则匹配器
-import java.util.regex.Matcher; // 正则模式
+import java.io.IOException; // 用于把字符串包装为 Reader 以便 XML 解析
+import java.io.StringReader; // 用于对 arXiv 查询字符串进行 URL 编码
+import java.net.URLEncoder; // 提供标准字符集常量（UTF-8）
+import java.nio.charset.StandardCharsets; // 表示时间段，用于 WebClient 的超时
+import java.nio.file.Files; // 提供 HashMap 实现
+import java.nio.file.Path; // 用于遍历集合的迭代器
+import java.nio.file.Paths; // Map 接口，用于构建上报负载
+import java.time.Duration; // 正则匹配器
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map; // 正则模式
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory; // DOM 解析器的构建器
+import javax.xml.parsers.DocumentBuilderFactory;
 
-import org.slf4j.Logger; // DOM DocumentBuilder 的工厂
-import org.slf4j.LoggerFactory; // 日志接口
-import org.springframework.beans.factory.annotation.Value; // 用于注入配置开关与列表
-import org.springframework.scheduling.annotation.Scheduled; // 用于计划任务注解
-import org.springframework.stereotype.Service; // 日志工厂，用于创建 Logger
-import org.springframework.web.reactive.function.client.WebClient; // 标注当前类为 Spring 的 Service 组件
-import org.w3c.dom.Document; // 非阻塞的 HTTP 客户端
-import org.w3c.dom.Element; // DOM Document 表示解析后的 XML 文档
-import org.w3c.dom.NodeList; // DOM Element 表示 XML 元素
-import org.xml.sax.InputSource; // DOM NodeList 表示节点列表
+import org.slf4j.Logger; // DOM 解析器的构建器
+import org.slf4j.LoggerFactory; // DOM DocumentBuilder 的工厂
+import org.springframework.beans.factory.annotation.Value; // 日志接口
+import org.springframework.scheduling.annotation.Scheduled; // 用于注入配置开关与列表
+import org.springframework.stereotype.Service; // 用于计划任务注解
+import org.springframework.web.reactive.function.client.WebClient; // 日志工厂，用于创建 Logger
+import org.w3c.dom.Document; // 标注当前类为 Spring 的 Service 组件
+import org.w3c.dom.Element; // 非阻塞的 HTTP 客户端
+import org.w3c.dom.NodeList; // DOM Document 表示解析后的 XML 文档
+import org.xml.sax.InputSource; // DOM Element 表示 XML 元素
 
-import com.academic.datasync.client.AchievementServiceClient; // 将字符串包装为 InputSource 供解析器使用
-import com.academic.datasync.client.FileServiceClient; // 成就服务客户端接口（注入）
-import com.academic.datasync.service.DataSyncService; // 文件服务客户端接口（注入）
-import com.fasterxml.jackson.databind.JsonNode; // DataSync 服务接口
-import com.fasterxml.jackson.databind.ObjectMapper; // Jackson 的 JsonNode，用于 JSON 树解析
+import com.academic.datasync.client.AchievementServiceClient; // DOM NodeList 表示节点列表
+import com.academic.datasync.client.FileServiceClient; // 将字符串包装为 InputSource 供解析器使用
+import com.academic.datasync.service.DataSyncService; // 成就服务客户端接口（注入）
+import com.fasterxml.jackson.databind.JsonNode; // 文件服务客户端接口（注入）
+import com.fasterxml.jackson.databind.ObjectMapper; // DataSync 服务接口
 
 @Service // 声明这是一个 Spring 管理的服务组件
 public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSyncService 接口
@@ -49,16 +56,110 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
     private final AchievementServiceClient achievementClient; // 注入用于上报成就的客户端
     // 文件服务客户端（注入）
     private final FileServiceClient fileServiceClient; // 注入用于上传文件的客户端
+    private Map<String, String> domainMap = new HashMap<String, String>() {
+        {
+            // 物理学相关映射（OpenAlex: Physics (C121332964) + arXiv: physics, astro-ph, gr-qc, hep-ex, hep-lat, hep-ph, hep-th, nucl-ex, nucl-th, quant-ph）
+            put("C121332964", "物理学");
+            put("physics", "物理学");
+            put("astro-ph", "物理学");
+            put("gr-qc", "物理学");
+            put("hep-ex", "物理学");
+            put("hep-lat", "物理学");
+            put("hep-ph", "物理学");
+            put("hep-th", "物理学");
+            put("nucl-ex", "物理学");
+            put("nucl-th", "物理学");
+            put("quant-ph", "物理学");
+
+            // 计算机科学（OpenAlex: Computer Science (C41008148) + arXiv: cs）
+            put("C41008148", "计算机科学");
+            put("cs", "计算机科学");
+
+            // 数学（OpenAlex: Mathematics (C33923547) + arXiv: math, math-ph, stat）
+            put("C33923547", "数学");
+            put("math", "数学");
+            put("math-ph", "数学");
+            put("stat", "数学");
+
+            // 材料科学（OpenAlex: Materials Science (C144133960)）
+            put("C144133960", "材料科学");
+
+            // 化学（OpenAlex: Chemistry (C185592680)）
+            put("C185592680", "化学");
+
+            // 生物学（OpenAlex: Biology (C86803240) + arXiv: q-bio）
+            put("C86803240", "生物学");
+            put("q-bio", "生物学");
+
+            // 工程学（OpenAlex: Engineering (C127413603) + arXiv: eess）
+            put("C127413603", "工程学");
+            put("eess", "工程学");
+
+            // 经济学（OpenAlex: Economics (C16203183) + arXiv: econ, q-fin）
+            put("C16203183", "经济学");
+            put("econ", "经济学");
+            put("q-fin", "经济学");
+
+            // 商业（OpenAlex: Business (C106769008)）
+            put("C106769008", "商业");
+
+            // 政治学（OpenAlex: Political Science (C17773945)）
+            put("C17773945", "政治学");
+
+            // 社会学（OpenAlex: Sociology (C58743932)）
+            put("C58743932", "社会学");
+
+            // 心理学（OpenAlex: Psychology (C95457728)）
+            put("C95457728", "心理学");
+
+            // 哲学（OpenAlex: Philosophy (C127961042)）
+            put("C127961042", "哲学");
+
+            // 历史学（OpenAlex: History (C112351118)）
+            put("C112351118", "历史学");
+
+            // 艺术（OpenAlex: Art (C15744967)）
+            put("C15744967", "艺术");
+
+            // 医学（OpenAlex: Medicine (C71924100)）
+            put("C71924100", "医学");
+
+            // 环境科学（OpenAlex: Environmental Science (C39432304)）
+            put("C39432304", "环境科学");
+
+            // 地理学（OpenAlex: Geography (C162324750)）
+            put("C162324750", "地理学");
+
+            // 地质学（OpenAlex: Geology (C138885662)）
+            put("C138885662", "地质学");
+
+            // 凝聚态物理（arXiv: cond-mat）
+            put("cond-mat", "凝聚态物理");
+
+            // 非线性科学（arXiv: nlin）
+            put("nlin", "非线性科学");
+        }
+    };
 
     // 自动爬取相关配置（从 application.yml 注入）
     @Value("${datasync.auto-enabled:false}")
     private boolean autoCrawlEnabled; // 开关：为 true 时启用定时爬取
 
-    @Value("${datasync.auto-categories:cs.AI,cs.CL,cs.LG}")
+    @Value("${datasync.auto-categories:astro-ph, cond-mat, cs, econ, eess, gr-qc, hep-ex, hep-lat, hep-ph, hep-th, math, math-ph, nlin, nucl-ex, nucl-th, physics, q-bio, q-fin, quant-ph, stat}")
     private String autoCategories; // 逗号分隔的领域列表
 
     @Value("${datasync.per-category-count:10}")
     private int perCategoryCount; // 每个领域拉取数量，默认 10
+
+    // OpenAlex field IDs (comma-separated). Defaults to Computer Science top-level ID.
+    @Value("${datasync.openalex-field-ids:C41008148, C71924100, C86803240, C185592680, C121332964, C39432304, C144133960, C127413603, C33923547, C162324750, C138885662, C95457728, C106769008, C16203183, C17773945, C58743932, C15744967, C112351118, C127961042}")
+    private String openAlexFieldIds;
+
+    // persistence for progress and processed ids
+    private final Path progressFile = Paths.get("datasync_progress.json");
+    private final Path processedFile = Paths.get("datasync_processed.json");
+    private final Map<String, Integer> progressMap = new ConcurrentHashMap<>();
+    private final Set<String> processedIds = ConcurrentHashMap.newKeySet();
 
     // 构造函数：通过 Spring 注入 WebClient.Builder 和客户端实现
     public DataSyncServiceImpl(WebClient.Builder builder,
@@ -78,6 +179,9 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                 .build(); // arXiv API 的 WebClient，设置 UA 与 Accept header
         this.achievementClient = achievementClient; // 保存注入的成就客户端引用
         this.fileServiceClient = fileServiceClient; // 保存注入的文件客户端引用
+        // load persisted state if present
+        loadProgress();
+        loadProcessedIds();
     }
 
     /**
@@ -103,29 +207,32 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
     public void pullFromPublicDb() { // 从公共数据库（OpenAlex 和 arXiv）拉取并处理示例流程
         log.info("Starting pullFromPublicDb: fetching works from OpenAlex (demo limited)"); // 记录开始
         try {
-            // 对每个配置的领域执行 OpenAlex 拉取，每个领域拉取 `perCategoryCount` 条记录
-            String[] categories = autoCategories.split("\\s*,\\s*");
-            for (String cat : categories) {
+            // 对每个配置的 OpenAlex 领域 ID 执行拉取，每个领域拉取 `perCategoryCount` 条记录
+            String[] fieldIds = openAlexFieldIds.split("\\s*,\\s*");
+            for (String fieldId : fieldIds) {
                 try {
-                    log.info("Fetching OpenAlex works for category {} (limit={})", cat, perCategoryCount);
+                    int page = progressMap.getOrDefault(fieldId, 1);
+                    log.info("Fetching OpenAlex works for field {} (page={}, per-page={})", fieldId, page, perCategoryCount);
                     String body = openAlexClient.get()
                             .uri(uriBuilder -> uriBuilder.path("/works")
-                            .queryParam("filter", "is_oa:true,concepts.display_name:" + cat)
+                            .queryParam("filter", "concepts.id:" + fieldId + ",is_oa:true")
                             .queryParam("per-page", String.valueOf(perCategoryCount))
+                            .queryParam("page", String.valueOf(page))
+                            .queryParam("sort", "cited_by_count:desc")
                             .build())
                             .retrieve()
                             .bodyToMono(String.class)
-                            .block(Duration.ofSeconds(10)); // 阻塞等待响应
+                            .block(Duration.ofSeconds(20)); // 阻塞等待响应
 
                     if (body == null) {
-                        log.warn("OpenAlex returned empty body for category {}", cat);
+                        log.warn("OpenAlex returned empty body for field {}", fieldId);
                         continue;
                     }
 
                     JsonNode root = objectMapper.readTree(body);
                     JsonNode results = root.get("results");
                     if (results == null || !results.isArray()) {
-                        log.warn("Unexpected OpenAlex response structure for category {}", cat);
+                        log.warn("Unexpected OpenAlex response structure for field {}", fieldId);
                         continue;
                     }
 
@@ -135,6 +242,28 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                         String title = work.path("title").asText("untitled");
                         String openalexId = work.path("id").asText();
                         String doi = work.path("doi").asText(null);
+
+                        // dedup identifier: prefer doi, then arxiv id, then title hash
+                        String identifier = null;
+                        if (doi != null && !doi.isEmpty()) {
+                            identifier = doi.toLowerCase();
+                        }
+                        if (identifier == null) {
+                            JsonNode ids = work.path("ids");
+                            if (!ids.isMissingNode() && ids.has("arxiv")) {
+                                identifier = ids.path("arxiv").asText(null);
+                            }
+                        }
+                        if (identifier == null) {
+                            String t = work.path("title").asText(null);
+                            if (t != null) {
+                                identifier = "title:" + Integer.toHexString(t.hashCode());
+                            }
+                        }
+                        if (identifier != null && processedIds.contains(identifier)) {
+                            log.debug("Skipping already processed work {}", identifier);
+                            continue;
+                        }
 
                         String pdfUrl = extractPdfUrl(work);
                         String fallbackFileId = openalexId == null || openalexId.isEmpty() ? (doi != null ? doi : "oa-" + System.currentTimeMillis()) : openalexId;
@@ -157,7 +286,9 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
 
                                             List<String> authors = extractAuthorsFromWork(work);
                                             String abstractText = textOrNull(work, "abstract");
-                                            String achJson = buildAchievementJson(title, authors, abstractText, finalFileId, null);
+                                            List<String> categories = new ArrayList<>();
+                                            categories.add(domainMap.get(fieldId));
+                                            String achJson = buildAchievementJson(title, authors, abstractText, finalFileId, null, categories);
                                             String achId = null;
                                             try {
                                                 achId = achievementClient.createAchievement(achJson);
@@ -196,15 +327,29 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                         achPayload.put("fileId", finalFileId);
                         String jsonPayload = objectMapper.writeValueAsString(achPayload);
                         log.info("[TEST MODE] Skipping achievement service call for work {} -> payload={}", openalexId, jsonPayload);
+
+                        if (identifier != null) {
+                            processedIds.add(identifier);
+                        }
                     }
+                    // persist progress & processed ids after each field page
+                    progressMap.put(fieldId, progressMap.getOrDefault(fieldId, 1) + 1);
+                    saveProgress();
+                    saveProcessedIds();
                 } catch (Exception e) {
-                    log.warn("OpenAlex fetch/upload phase failed for category {}: {}", cat, e.getMessage());
+                    log.warn("OpenAlex fetch/upload phase failed for field {}: {}", fieldId, e.getMessage());
                 }
             }
 
             // OpenAlex 部分处理完成，接着尝试从 arXiv 拉取记录（按每个领域拉取 `perCategoryCount` 条）
             int arxivCount = perCategoryCount > 0 ? perCategoryCount : 10;
-            String[] cats = autoCategories.split("\\s*,\\s*");
+            // Use top-level arXiv categories. If autoCategories was provided, use it as a shortcut list; otherwise use full default list.
+            String[] cats;
+            if (autoCategories != null && !autoCategories.isEmpty()) {
+                cats = autoCategories.split("\\s*,\\s*");
+            } else {
+                cats = new String[]{"astro-ph", "cond-mat", "cs", "econ", "eess", "gr-qc", "hep-ex", "hep-lat", "hep-ph", "hep-th", "math", "math-ph", "nlin", "nucl-ex", "nucl-th", "physics", "q-bio", "q-fin", "quant-ph", "stat"};
+            }
             try {
                 for (String cat : cats) {
                     final String ARXIV_SEARCH_QUERY = "cat:" + cat;
@@ -259,6 +404,22 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
 
                         String finalFileId = (arxId != null) ? arxId : ("arx-" + System.currentTimeMillis());
 
+                        // dedup for arXiv entries: prefer arXiv id, then title hash
+                        String identifier = null;
+                        if (arxId != null && !arxId.isEmpty()) {
+                            identifier = arxId;
+                        }
+                        if (identifier == null) {
+                            String t2 = title;
+                            if (t2 != null) {
+                                identifier = "title:" + Integer.toHexString(t2.hashCode());
+                            }
+                        }
+                        if (identifier != null && processedIds.contains(identifier)) {
+                            log.debug("Skipping already processed arXiv entry {}", identifier);
+                            continue;
+                        }
+
                         if (pdfUrl != null) {
                             try {
                                 log.info("Found arXiv PDF for {} -> {}", arxId, pdfUrl);
@@ -274,7 +435,9 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                                             log.info("Uploaded PDF for arXiv {} to file-service, fileId={}", arxId, finalFileId);
                                             java.util.List<String> authors = extractAuthorsFromArxivEntry(entry);
                                             String abstractText = extractSummaryFromArxivEntry(entry);
-                                            String achJson = buildAchievementJson(title, authors, abstractText, finalFileId, null);
+                                            List<String> categories = new ArrayList<>();
+                                            categories.add(domainMap.get(cat));
+                                            String achJson = buildAchievementJson(title, authors, abstractText, finalFileId, null, categories);
                                             String achId = null;
                                             try {
                                                 achId = achievementClient.createAchievement(achJson);
@@ -314,6 +477,12 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
 
                         String jsonPayload = objectMapper.writeValueAsString(achPayload);
                         log.info("[TEST MODE] Skipping achievement service call for arXiv {} -> payload={}", arxId, jsonPayload);
+
+                        // mark this arXiv entry as processed and persist
+                        if (identifier != null) {
+                            processedIds.add(identifier);
+                            saveProcessedIds();
+                        }
                     }
                 }
             } catch (Exception ae) {
@@ -324,141 +493,6 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
         } catch (Exception e) {
             // 捕获并记录异常，包含堆栈信息
             log.error("pullFromPublicDb failed: {}", e.getMessage(), e); // 记录异常
-        }
-    }
-
-    /**
-     * Find a work on OpenAlex by arXiv id and upload its PDF via file-service
-     * (streamed). Returns the file-service response body (JSON) or null on
-     * failure.
-     */
-    public String uploadWorkFromOpenAlexByArxiv(String arxivId) { // 根据 arXiv id 在 OpenAlex 查找并上传
-        try {
-            String body = openAlexClient.get()
-                    .uri(uriBuilder -> uriBuilder.path("/works")
-                    .queryParam("filter", "ids.arxiv:" + arxivId)
-                    .queryParam("per-page", "1")
-                    .build())
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(Duration.ofSeconds(10)); // 阻塞等待 OpenAlex 响应
-
-            if (body == null) {
-                log.warn("OpenAlex returned empty body for arXiv {}", arxivId); // 空响应
-                return null; // 无结果
-            }
-
-            JsonNode root = objectMapper.readTree(body); // 解析 JSON
-            JsonNode results = root.path("results"); // 获取 results
-            if (!results.isArray() || results.size() == 0) {
-                log.warn("No OpenAlex work found for arXiv {}", arxivId); // 未找到对应 work
-                return null; // 返回 null
-            }
-
-            JsonNode work = results.get(0); // 取第一个匹配的 work
-            String title = work.path("title").asText("untitled"); // 取标题
-            String pdfUrl = extractPdfUrl(work); // 提取 pdf URL
-            if (pdfUrl == null) {
-                log.warn("No PDF URL found for arXiv {}", arxivId); // 没有 PDF
-                return null; // 返回 null
-            }
-
-            String filename = sanitizeFilename(title == null || title.isEmpty() ? arxivId : title); // 生成文件名
-            log.info("Uploading from OpenAlex arXiv {} -> url={} filename={}", arxivId, pdfUrl, filename); // 记录上传行为
-            String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename);
-            if (uploadResp == null) {
-                return null;
-            }
-            try {
-                JsonNode uploadRoot = objectMapper.readTree(uploadResp);
-                JsonNode data = uploadRoot.path("data");
-                String uploadedFileId = data.path("fileId").asText(null);
-                if (uploadedFileId != null && !uploadedFileId.isEmpty()) {
-                    List<String> authors = extractAuthorsFromWork(work);
-                    String abstractText = textOrNull(work, "abstract");
-                    String achJson = buildAchievementJson(title, authors, abstractText, uploadedFileId, null);
-                    String achId = null;
-                    try {
-                        achId = achievementClient.createAchievement(achJson);
-                    } catch (Exception ex) {
-                        log.warn("createAchievement threw for arXiv {}: {}", arxivId, ex.getMessage());
-                    }
-                    if (achId == null || achId.isEmpty()) {
-                        log.warn("Achievement creation failed for {}. Deleting uploaded file {}", arxivId, uploadedFileId);
-                        try {
-                            fileServiceClient.deleteFile(uploadedFileId);
-                        } catch (Exception ex) {
-                            log.error("Failed to delete file {}: {}", uploadedFileId, ex.getMessage());
-                        }
-                        return null;
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Failed to parse upload response for arXiv {}: {}", arxivId, e.getMessage());
-            }
-            return uploadResp;
-
-        } catch (Exception e) {
-            log.error("uploadWorkFromOpenAlexByArxiv failed for {}: {}", arxivId, e.getMessage(), e); // 异常记录
-            return null; // 返回 null
-        }
-    }
-
-    /**
-     * Deterministic helper for tests: given an arXiv id, try to resolve a PDF
-     * URL (via arXiv API lookup) and upload it to file-service. Returns the raw
-     * file-service response body (JSON) or null on failure.
-     */
-    public String uploadFromArxivById(String arxivId) { // 给定 arXiv id，尝试查找 PDF 并上传（测试用）
-        if (arxivId == null || arxivId.isEmpty()) {
-            return null; // 参数检查
-        }
-        try {
-            String pdfUrl = lookupArxivPdfUrl(arxivId); // 通过 arXiv API 查找 PDF 链接
-            if (pdfUrl == null) {
-                pdfUrl = arxivPdfFromId(arxivId); // 回退到构造的 pdf URL
-            }
-            if (pdfUrl == null) {
-                return null; // 无法获取 PDF
-            }
-
-            String filename = sanitizeFilename(arxivId + ".pdf"); // 文件名
-            log.info("Uploading arXiv {} -> {}", arxivId, pdfUrl); // 记录上传动作
-            String uploadResp = fileServiceClient.uploadFromUrl("datasync", pdfUrl, filename); // 上传并返回响应
-            if (uploadResp == null) {
-                return null;
-            }
-            try {
-                JsonNode uploadRoot = objectMapper.readTree(uploadResp);
-                JsonNode data = uploadRoot.path("data");
-                String uploadedFileId = data.path("fileId").asText(null);
-                if (uploadedFileId != null && !uploadedFileId.isEmpty()) {
-                    java.util.List<String> authors = new java.util.ArrayList<>();
-                    String abstractText = null;
-                    String achJson = buildAchievementJson(arxivId, authors, abstractText, uploadedFileId, null);
-                    String achId = null;
-                    try {
-                        achId = achievementClient.createAchievement(achJson);
-                    } catch (Exception ex) {
-                        log.warn("createAchievement threw for arXiv {}: {}", arxivId, ex.getMessage());
-                    }
-                    if (achId == null || achId.isEmpty()) {
-                        log.warn("Achievement creation failed for {}. Deleting uploaded file {}", arxivId, uploadedFileId);
-                        try {
-                            fileServiceClient.deleteFile(uploadedFileId);
-                        } catch (Exception ex) {
-                            log.error("Failed to delete file {}: {}", uploadedFileId, ex.getMessage());
-                        }
-                        return null;
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Failed to parse upload response for arXiv {}: {}", arxivId, e.getMessage());
-            }
-            return uploadResp;
-        } catch (Exception e) {
-            log.error("uploadFromArxivById failed for {}: {}", arxivId, e.getMessage(), e); // 异常记录
-            return null; // 返回 null
         }
     }
 
@@ -657,7 +691,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
     }
 
     // 构造符合 AchievementDto 的 JSON 字符串
-    private String buildAchievementJson(String title, java.util.List<String> authors, String abstractText, String fileId, Integer type) {
+    private String buildAchievementJson(String title, java.util.List<String> authors, String abstractText, String fileId, Integer type, List<String> categories) {
         try {
             com.fasterxml.jackson.databind.node.ObjectNode node = objectMapper.createObjectNode();
             node.putNull("achievementId");
@@ -675,6 +709,15 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                 }
             } else {
                 node.putArray("authors");
+            }
+
+            if (categories != null) {
+                com.fasterxml.jackson.databind.node.ArrayNode arr = node.putArray("categories");
+                for (String c : categories) {
+                    arr.add(c);
+                }
+            } else {
+                node.putArray("categories");
             }
             node.put("abstract", abstractText == null ? "" : abstractText);
             node.put("fileId", fileId == null ? "" : fileId);
@@ -773,5 +816,48 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
             s = s.substring(0, 200); // 截断到 200 字符
         }
         return s; // 返回清理后的文件名
+    }
+
+    // Persistence helpers for progress and processed ids
+    private void loadProgress() {
+        try {
+            if (Files.exists(progressFile)) {
+                Map<String, Integer> m = objectMapper.readValue(progressFile.toFile(), objectMapper.getTypeFactory().constructMapType(Map.class, String.class, Integer.class));
+                if (m != null) {
+                    progressMap.putAll(m);
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Failed to load progress file: {}", e.getMessage());
+        }
+    }
+
+    private void saveProgress() {
+        try {
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(progressFile.toFile(), progressMap);
+        } catch (IOException e) {
+            log.warn("Failed to save progress file: {}", e.getMessage());
+        }
+    }
+
+    private void loadProcessedIds() {
+        try {
+            if (Files.exists(processedFile)) {
+                java.util.List<String> list = objectMapper.readValue(processedFile.toFile(), objectMapper.getTypeFactory().constructCollectionType(java.util.List.class, String.class));
+                if (list != null) {
+                    processedIds.addAll(list);
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Failed to load processed ids file: {}", e.getMessage());
+        }
+    }
+
+    private void saveProcessedIds() {
+        try {
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(processedFile.toFile(), new java.util.ArrayList<>(processedIds));
+        } catch (IOException e) {
+            log.warn("Failed to save processed ids file: {}", e.getMessage());
+        }
     }
 }

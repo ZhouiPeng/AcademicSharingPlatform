@@ -116,7 +116,11 @@ public class FileServiceClient {
                 };
 
                 MultiValueMap<String, Object> parts = new org.springframework.util.LinkedMultiValueMap<>();
-                parts.add("file", resource);
+                // 添加三个字段
+                parts.add("fileName", filename);  // 新的JSON字段
+                parts.add("url", pdfUrl);         // 新的JSON字段
+                parts.add("file", resource);      // 原有的文件字段
+                // ====================
 
                 return webClient.post()
                         .uri(uriBuilder -> uriBuilder.path("/api/files/upload/{uploaderId}").build(uploaderId))
