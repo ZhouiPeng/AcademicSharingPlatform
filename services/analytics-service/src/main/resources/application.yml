@@ -1,6 +1,3 @@
-spring:
-  application:
-    name: analytics-service
 server:
   port: 8084
 
@@ -14,6 +11,8 @@ springdoc:
     path: /swagger-ui/index.html
 
 spring:
+  application:
+    name: analytics-service
   datasource:
     url: jdbc:mysql://${DB_HOST:124.70.81.32}:${DB_PORT:3306}/${DB_NAME:analysis_service}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
     username: ${DB_USERNAME:buaa}
