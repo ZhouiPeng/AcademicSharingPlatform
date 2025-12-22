@@ -30,7 +30,8 @@ docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-com
 ```powershell
 docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml stop
 docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml rm -f
-docker volume rm $(docker --context ecs volume ls -q)
+docker --context ecs volume ls -q | ForEach-Object { docker --context ecs volume rm $_ -f }
+make
 docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml up --build -d
 ```
 

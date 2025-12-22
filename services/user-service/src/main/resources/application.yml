@@ -28,8 +28,3 @@ spring.mail:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
-
-springdoc:
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui/index.html

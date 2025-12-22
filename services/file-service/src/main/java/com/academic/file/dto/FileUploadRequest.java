@@ -1,5 +1,7 @@
 package com.academic.file.dto;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,4 +16,5 @@ public class FileUploadRequest {
     @NotBlank
     private String fileName;
     private String url;
+    private MultipartFile file;
 }

@@ -4,5 +4,5 @@ USER appuser
 WORKDIR /data-sync-service
 ARG JAR_FILE=target/data-sync-service.jar
 COPY ${JAR_FILE} app.jar
-EXPOSE 8004
+EXPOSE 8086
 CMD ["java", "-jar", "app.jar"]

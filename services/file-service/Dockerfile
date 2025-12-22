@@ -4,5 +4,5 @@ USER appuser
 WORKDIR /file-service
 ARG JAR_FILE=target/file-service.jar
 COPY ${JAR_FILE} app.jar
-EXPOSE 8005
+EXPOSE 8083
 CMD ["java", "-jar", "app.jar"]

@@ -4,5 +4,5 @@ USER appuser
 WORKDIR /analytics-service
 ARG JAR_FILE=target/analytics-service.jar
 COPY ${JAR_FILE} app.jar
-EXPOSE 8006
+EXPOSE 8084
 CMD ["java", "-jar", "app.jar"]

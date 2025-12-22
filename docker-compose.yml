@@ -8,14 +8,14 @@ services:
   #     - MYSQL_PASSWORD=${MYSQL_PASSWORD}
   #     - MYSQL_USER_DB_NAME=${MYSQL_USER_DB_NAME}
   #   expose:
-  #     - "8001"
+  #     - "8081"
 
   # achievement-service:
   #   build: ./services/achievement-service
   #   env_file:
   #     - .env
   #   expose:
-  #     - "8002"
+  #     - "8082"
 
   file-service:
     build: ./services/file-service
@@ -26,23 +26,45 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_FILE_DB_NAME=${MYSQL_FILE_DB_NAME}
     expose:
-      - "8005"
+      - "8083"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://file-service:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # data-sync-service:
-  #   build: ./services/data-sync-service
-  #   env_file:
-  #     - .env
-  #   expose:
-  #     - "8004"
+  data-sync-service:
+    build: ./services/data-sync-service
+    env_file:
+      - .env
+    expose:
+      - "8086"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://data-sync-service:8086/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # analytics-service:
-  #   build: ./services/analytics-service
-  #   env_file:
-  #     - .env
-  #   expose:
-  #     - "8006"
+  analytics-service:
+    build: ./services/analytics-service
+    env_file:
+      - .env
+    expose:
+      - "8084"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://analytics-service:8084/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # admin-service:
   #   build: ./services/admin-service
@@ -58,11 +80,26 @@ services:
   #     - MONGODB_PASSWORD=${MONGO_PASSWORD}
   #     - MONGODB_ADMIN_DB_NAME=${MONGO_ADMIN_DB_NAME}
   #   expose:
-  #     - "8003"
+  #     - "8085"
 
   gateway-service:
     build: ./services/gateway-service
     ports:
       - "8080:8080"
     depends_on:
-      - mysql
+      file-service:
+        condition: service_healthy
+      data-sync-service:
+        condition: service_healthy
+      analytics-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    #   - user-service
+    #   - achievement-service
+    #   - admin-service
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://gateway-service:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

@@ -24,10 +24,11 @@ public class FileServiceImpl implements FileService {
 
     @Override
     @Transactional
-    public FileUploadDto uploadFile(String uploaderId, MultipartFile file, FileUploadRequest req) {
+    public FileUploadDto uploadFile(String uploaderId, FileUploadRequest req) {
         String fileId = UUID.randomUUID().toString();
         String fileName = req.getFileName();
         String fileType = req.getFileType();
+        MultipartFile file = req.getFile();
         String objectKey = null;
         long size = 0L;
 

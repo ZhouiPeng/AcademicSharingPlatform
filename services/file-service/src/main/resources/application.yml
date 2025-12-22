@@ -1,12 +1,6 @@
 server:
   port: 8083
 
-
-springdoc:
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui/index.html
-
 obs:
   endpoint: ${OBS_ENDPOINT}
   accessKey: ${OBS_ACCESS_KEY}

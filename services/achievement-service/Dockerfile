@@ -4,5 +4,5 @@ USER appuser
 WORKDIR /achievement-service
 ARG JAR_FILE=target/achievement-service.jar
 COPY ${JAR_FILE} app.jar
-EXPOSE 8002
+EXPOSE 8082
 CMD ["java", "-jar", "app.jar"]

@@ -10,7 +10,7 @@ public class SwaggerUrlPrinter implements ApplicationListener<WebServerInitializ
     @Override
     public void onApplicationEvent(WebServerInitializedEvent event) {
         int port = event.getWebServer().getPort();
-        String url = "http://localhost:" + port + "/swagger-ui/index.html";
+        String url = "http://124.70.81.32:" + port + "/swagger-ui/index.html";
         System.out.println();
         System.out.println("==================================================");
         System.out.println("Swagger UI: " + url);

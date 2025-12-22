@@ -7,6 +7,7 @@ ACHIEVE_DB_NAME=${MYSQL_ACHIEVE_DB_NAME}
 FILE_DB_NAME=${MYSQL_FILE_DB_NAME}
 ADMIN_DB_NAME=${MYSQL_ADMIN_DB_NAME}
 USER_DB_NAME=${MYSQL_USER_DB_NAME}
+ANALYTICS_DB_NAME=${MYSQL_ANALYTICS_DB_NAME}
 
 for i in {1..30}; do
   if mysqladmin ping -uroot >/dev/null 2>&1; then
@@ -15,18 +16,24 @@ for i in {1..30}; do
   sleep 1
 done
 
-mysql -uroot <<-EOS
-CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+# Build SQL dynamically to avoid empty database names causing syntax errors
+SQL=""
+SQL+="CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';\n"
 
-CREATE DATABASE IF NOT EXISTS \`${ACHIEVE_DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-CREATE DATABASE IF NOT EXISTS \`${FILE_DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-CREATE DATABASE IF NOT EXISTS \`${ADMIN_DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-CREATE DATABASE IF NOT EXISTS \`${USER_DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+add_db() {
+  local dbname="$1"
+  if [ -n "${dbname}" ]; then
+    SQL+="CREATE DATABASE IF NOT EXISTS \`${dbname}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;\n"
+    SQL+="GRANT ALL PRIVILEGES ON \`${dbname}\`.* TO '${MYSQL_USER}'@'%';\n"
+  fi
+}
 
-GRANT ALL PRIVILEGES ON \`${ACHIEVE_DB_NAME}\`.* TO '${MYSQL_USER}'@'%';
-GRANT ALL PRIVILEGES ON \`${FILE_DB_NAME}\`.* TO '${MYSQL_USER}'@'%';
-GRANT ALL PRIVILEGES ON \`${ADMIN_DB_NAME}\`.* TO '${MYSQL_USER}'@'%';
-GRANT ALL PRIVILEGES ON \`${USER_DB_NAME}\`.* TO '${MYSQL_USER}'@'%';
+add_db "${ACHIEVE_DB_NAME}"
+add_db "${FILE_DB_NAME}"
+add_db "${ADMIN_DB_NAME}"
+add_db "${USER_DB_NAME}"
+add_db "${ANALYTICS_DB_NAME}"
 
-FLUSH PRIVILEGES;
-EOS
+SQL+="FLUSH PRIVILEGES;\n"
+
+echo -e "${SQL}" | mysql -uroot

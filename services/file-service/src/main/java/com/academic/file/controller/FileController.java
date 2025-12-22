@@ -32,9 +32,8 @@ public class FileController {
 	@PostMapping(value = "/upload/{uploaderId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<FileUploadDto>> upload(
 			@PathVariable @NotBlank String uploaderId,
-			@RequestPart("file") MultipartFile file,
-			@RequestPart("url") @Valid FileUploadRequest req) {
-		ApiResponse<FileUploadDto> resp = ApiResponse.success(service.uploadFile(uploaderId, file, req));
+			@ModelAttribute @Valid FileUploadRequest req) {
+		ApiResponse<FileUploadDto> resp = ApiResponse.success(service.uploadFile(uploaderId, req));
 		return ResponseEntity.status(201).body(resp);
 	}
 
