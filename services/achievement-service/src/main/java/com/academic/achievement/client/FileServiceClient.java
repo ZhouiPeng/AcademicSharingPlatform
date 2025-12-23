@@ -12,7 +12,7 @@ public class FileServiceClient {
 
     public FileServiceClient(WebClient.Builder builder) {
         // Local development uses localhost:8083; Docker Compose can replace this host.
-        this.webClient = builder.baseUrl("http://file-ser:8083").build();
+        this.webClient = builder.baseUrl("http://file-service:8083").build();
     }
 
     /**
