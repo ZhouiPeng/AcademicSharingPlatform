@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class FileUploadRequest {
+public class FileRequest {
     @NotBlank
     private String fileType;
     @NotBlank

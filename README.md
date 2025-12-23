@@ -18,12 +18,9 @@ docker context ls
 2) Run compose on ECS (remote build/pull and start)
 ```powershell
 docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml up -d
-```
-
-# Check remote status and logs
-```powershell
 docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml ps
-docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml logs mysql -f
+docker --context ecs inspect <container>
+docker --context ecs logs <container>
 ```
 
 3) Recompose
@@ -34,7 +31,3 @@ docker --context ecs volume ls -q | ForEach-Object { docker --context ecs volume
 make
 docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml up --build -d
 ```
-
-Notes
-- Keep sensitive values in a local `.env` (do not commit).
-- Use `docker compose -f ... config` locally to validate merged config before deploying.

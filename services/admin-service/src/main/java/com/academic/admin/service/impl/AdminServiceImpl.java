@@ -33,7 +33,7 @@ public class AdminServiceImpl implements AdminService {
             UserMessageStateRepository stateRepository,
             AuthRequestRepository authRequestRepository,
             ReportRepository reportRepository,
-            @Value("${USER_SERVICE_URL:http://localhost:8081}") String userServiceUrl) {
+            @Value("http://user-service:8081") String userServiceUrl) {
         this.messageRepository = messageRepository;
         this.stateRepository = stateRepository;
         this.authRequestRepository = authRequestRepository;

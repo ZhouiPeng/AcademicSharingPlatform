@@ -58,14 +58,4 @@ public class ObsClientServiceImpl implements ObsClientService {
             throw new FileException("Failed to get object", e);
         }
     }
-
-    @Override
-    public void changePath(String oldFilePath, String newFilePath) {
-        try (ObsClient obsClient = createObsClient()) {
-            obsClient.copyObject(props.getBucket(), oldFilePath, props.getBucket(), newFilePath);
-            obsClient.deleteObject(props.getBucket(), oldFilePath);
-        } catch (Exception e) {
-            throw new FileException("Failed to change path", e);
-        }
-    }
 }

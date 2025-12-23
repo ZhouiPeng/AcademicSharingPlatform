@@ -1,15 +1,6 @@
 #!/bin/bash
 set -e
 
-# This script runs inside the official MongoDB docker-entrypoint-initdb.d
-# It creates a MongoDB user from environment variables and grants
-# the user the `dbOwner` role on the target database (ADMIN_DB_NAME).
-#
-# Environment variables expected:
-# - MONGO_USER
-# - MONGO_PASSWORD
-# - ADMIN_DB_NAME (optional; defaults to "admin_service")
-
 if [ -z "$MONGO_USER" ]; then
   echo "MONGO_USER not set; skipping Mongo user creation"
   exit 0
@@ -19,7 +10,16 @@ TARGET_DB=${MONGO_ADMIN_DB_NAME}
 
 echo "Creating MongoDB user '$MONGO_USER' with dbOwner on '$TARGET_DB' (if not exists)"
 
-mongo <<EOF
+if command -v mongosh >/dev/null 2>&1; then
+  SHELL_CMD="mongosh --quiet"
+elif command -v mongo >/dev/null 2>&1; then
+  SHELL_CMD="mongo"
+else
+  echo "Neither mongosh nor mongo client found in image; cannot create user" >&2
+  exit 1
+fi
+
+${SHELL_CMD} <<EOF
 var adminDB = db.getSiblingDB('admin');
 var username = "${MONGO_USER}";
 var password = "${MONGO_PASSWORD}";
@@ -34,8 +34,6 @@ if (!adminDB.getUser(username)) {
 } else {
   print('MongoDB user ' + username + ' already exists');
 }
-
-// ensure the target database exists by creating a placeholder collection (no-op if exists)
 var targetDB = db.getSiblingDB(targetDBName);
 if (!targetDB.getCollectionNames().includes('_init_coll')) {
   targetDB.createCollection('_init_coll');

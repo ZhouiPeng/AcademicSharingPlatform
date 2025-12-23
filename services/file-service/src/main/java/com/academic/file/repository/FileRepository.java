@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface FileRepository extends JpaRepository<FileEntity, String> {
     Optional<FileEntity> findByObjectKey(String objectKey);
+    Optional<FileEntity> findByTypeAndName(String type, String name);
     
     @Modifying
     @Transactional

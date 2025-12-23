@@ -78,10 +78,10 @@ gateway:
   swagger:
     urls:
       - "File Service|/gateway-api-docs/file-service"
-      # - "User Service|/gateway-api-docs/user-service"
-      # - "Achievement Service|/gateway-api-docs/achievement-service"
+      - "User Service|/gateway-api-docs/user-service"
+      - "Achievement Service|/gateway-api-docs/achievement-service"
       - "Analytics Service|/gateway-api-docs/analytics-service"
-      # - "Admin Service|/gateway-api-docs/admin-service"
+      - "Admin Service|/gateway-api-docs/admin-service"
       - "DataSync Service|/gateway-api-docs/data-sync-service"
 
 springdoc:

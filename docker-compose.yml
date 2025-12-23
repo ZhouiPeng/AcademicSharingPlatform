@@ -1,21 +1,45 @@
 services:
-  # user-service:
-  #   build: ./services/user-service
-  #   environment:
-  #     - MYSQL_HOST=${MYSQL_HOST}
-  #     - MYSQL_PORT=${MYSQL_PORT}
-  #     - MYSQL_USER=${MYSQL_USER}
-  #     - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-  #     - MYSQL_USER_DB_NAME=${MYSQL_USER_DB_NAME}
-  #   expose:
-  #     - "8081"
+  user-service:
+    build: ./services/user-service
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_USER_DB_NAME=${MYSQL_USER_DB_NAME}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+    expose:
+      - "8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://user-service:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # achievement-service:
-  #   build: ./services/achievement-service
-  #   env_file:
-  #     - .env
-  #   expose:
-  #     - "8082"
+  achievement-service:
+    build: ./services/achievement-service
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ACHIEVE_DB_NAME=${MYSQL_ACHIEVE_DB_NAME}
+    expose:
+      - "8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://achievement-service:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   file-service:
     build: ./services/file-service
@@ -25,6 +49,10 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_FILE_DB_NAME=${MYSQL_FILE_DB_NAME}
+      - OBS_ENDPOINT=${OBS_ENDPOINT}
+      - OBS_ACCESS_KEY=${OBS_ACCESS_KEY}
+      - OBS_SECRET_KEY=${OBS_SECRET_KEY}
+      - OBS_BUCKET=${OBS_BUCKET}
     expose:
       - "8083"
     depends_on:
@@ -38,13 +66,8 @@ services:
 
   data-sync-service:
     build: ./services/data-sync-service
-    env_file:
-      - .env
     expose:
       - "8086"
-    depends_on:
-      mysql:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://data-sync-service:8086/actuator/health || exit 1"]
       interval: 10s
@@ -53,8 +76,12 @@ services:
 
   analytics-service:
     build: ./services/analytics-service
-    env_file:
-      - .env
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ANALYTICS_DB_NAME=${MYSQL_ANALYTICS_DB_NAME}
     expose:
       - "8084"
     depends_on:
@@ -66,21 +93,31 @@ services:
       timeout: 5s
       retries: 5
 
-  # admin-service:
-  #   build: ./services/admin-service
-  #   environment:
-  #     - MYSQL_HOST=${MYSQL_HOST}
-  #     - MYSQL_PORT=${MYSQL_PORT}
-  #     - MYSQL_USER=${MYSQL_USER}
-  #     - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-  #     - MYSQL_ADMIN_DB_NAME=${MYSQL_ADMIN_DB_NAME}
-  #     - MONGODB_HOST=${MONGO_HOST}
-  #     - MONGODB_PORT=${MONGO_PORT}
-  #     - MONGODB_USER=${MONGO_USER}
-  #     - MONGODB_PASSWORD=${MONGO_PASSWORD}
-  #     - MONGODB_ADMIN_DB_NAME=${MONGO_ADMIN_DB_NAME}
-  #   expose:
-  #     - "8085"
+  admin-service:
+    build: ./services/admin-service
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ADMIN_DB_NAME=${MYSQL_ADMIN_DB_NAME}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_ADMIN_DB_NAME=${MONGO_ADMIN_DB_NAME}
+    expose:
+      - "8085"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://admin-service:8085/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   gateway-service:
     build: ./services/gateway-service
@@ -93,11 +130,12 @@ services:
         condition: service_healthy
       analytics-service:
         condition: service_healthy
-      mysql:
+      user-service:
         condition: service_healthy
-    #   - user-service
-    #   - achievement-service
-    #   - admin-service
+      achievement-service:
+        condition: service_healthy
+      admin-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://gateway-service:8080/actuator/health || exit 1"]
       interval: 10s
