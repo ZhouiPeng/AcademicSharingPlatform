@@ -14,7 +14,7 @@ public class AchievementServiceClient {
     private final WebClient webClient;
 
     public AchievementServiceClient(WebClient.Builder builder,
-            @Value("${achievement.service.url:http://localhost:8082}") String baseUrl) {
+            @Value("${achievement.service.url:http://achievement-service:8082}") String baseUrl) {
         this.webClient = builder.baseUrl(baseUrl).build();
     }
 

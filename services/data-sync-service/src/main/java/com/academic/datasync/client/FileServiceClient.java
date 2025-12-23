@@ -25,7 +25,7 @@ public class FileServiceClient {
     private final WebClient webClient;
 
     public FileServiceClient(WebClient.Builder builder,
-            @Value("${file.service.url:http://localhost:8083}") String baseUrl) {
+            @Value("${file.service.url:http://file-service:8083}") String baseUrl) {
         this.webClient = builder.baseUrl(baseUrl).build();
     }
 
