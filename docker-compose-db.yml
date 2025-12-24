@@ -1,0 +1,51 @@
+services:
+  mysql:
+    build:
+      context: ./db/mysql
+      dockerfile: Dockerfile
+    image: academicsharing/mysql-with-init:latest
+    restart: unless-stopped
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: ${MYSQL_ALLOW_EMPTY_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ACHIEVE_DB_NAME: ${MYSQL_ACHIEVE_DB_NAME}
+      MYSQL_FILE_DB_NAME: ${MYSQL_FILE_DB_NAME}
+      MYSQL_ADMIN_DB_NAME: ${MYSQL_ADMIN_DB_NAME}
+      MYSQL_USER_DB_NAME: ${MYSQL_USER_DB_NAME}
+      MYSQL_ANALYTICS_DB_NAME: ${MYSQL_ANALYTICS_DB_NAME}
+    expose:
+      - "3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo:
+    build:
+      context: ./db/mongodb
+      dockerfile: Dockerfile
+    image: academicsharing/mongo-with-init:latest
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_USER: ${MONGO_USER}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_ADMIN_DB_NAME: ${MONGO_ADMIN_DB_NAME}
+    expose:
+      - "27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand({ping:1})\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql-data:
+  mongo-data:

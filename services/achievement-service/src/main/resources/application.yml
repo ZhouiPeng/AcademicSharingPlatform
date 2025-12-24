@@ -2,9 +2,9 @@ spring:
   application:
     name: achievement-service
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:achievement_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
-    username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:qdab2005}
+    url: jdbc:mysql://124.70.81.32:3306/achievement_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8
+    username: ${DB_USERNAME:buaa}
+    password: "${DB_PASSWORD:Password@#@114514}"
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -15,18 +15,6 @@ spring:
 server:
   port: 8082
 
-# URL of user service used by UserClient
-user:
-  service:
-    url: http://localhost:8081
-
 springdoc:
   swagger-ui:
-    enabled: true
-    path: /swagger-ui/index.html
- 
-# 小开关：默认环境（dev / prod）
-app:
-  env: dev
-
-# 注意：数据库配置放到 profile 专用文件中（application-dev.yml / application-prod.yml）
+    enabled: false

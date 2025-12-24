@@ -1,144 +1,143 @@
-version: '3.8'
 services:
-  mysql:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: academic
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-
-  mongo:
-    image: mongo:6.0
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-
-  minio:
-    image: minio/minio:RELEASE.2023-07-20T00-00-00Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio-data:/data
-
   user-service:
     build: ./services/user-service
-    ports:
-      - "3001:3001"
     environment:
-      MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
-      MINIO_ENDPOINT: minio
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_USER_DB_NAME=${MYSQL_USER_DB_NAME}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+    expose:
+      - "8081"
     depends_on:
-      - mysql
-      - minio
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://user-service:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   achievement-service:
     build: ./services/achievement-service
-    ports:
-      - "3002:3002"
     environment:
-      MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
-      MINIO_ENDPOINT: minio
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ACHIEVE_DB_NAME=${MYSQL_ACHIEVE_DB_NAME}
+    expose:
+      - "8082"
     depends_on:
-      - mysql
-      - minio
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://achievement-service:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   file-service:
     build: ./services/file-service
-    ports:
-      - "3005:3005"
     environment:
-      MONGO_HOST: mongo
-      MINIO_ENDPOINT: minio
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_FILE_DB_NAME=${MYSQL_FILE_DB_NAME}
+      - OBS_ENDPOINT=${OBS_ENDPOINT}
+      - OBS_ACCESS_KEY=${OBS_ACCESS_KEY}
+      - OBS_SECRET_KEY=${OBS_SECRET_KEY}
+      - OBS_BUCKET=${OBS_BUCKET}
+    expose:
+      - "8083"
     depends_on:
-      - mongo
-      - minio
-
-  # Java-based services (independent Spring Boot projects)
-  user-service-java:
-    build: ./services-java-modules/user-service
-    ports:
-      - "3001:3001"
-    depends_on:
-      - mysql
-
-  achievement-service-java:
-    build: ./services-java-modules/achievement-service
-    ports:
-      - "3002:3002"
-    depends_on:
-      - mysql
-
-  search-service-java:
-    build: ./services-java-modules/search-service
-    ports:
-      - "3003:3003"
-
-  data-sync-service-java:
-    build: ./services-java-modules/data-sync-service
-    ports:
-      - "3004:3004"
-
-  gateway-service:
-    build: ./services-java-modules/gateway-service
-    ports:
-      - "8080:8080"
-    depends_on:
-      - user-service-java
-      - achievement-service-java
-      - file-service-java
-
-  file-service-java:
-    build: ./services-java-modules/file-service
-    ports:
-      - "3005:3005"
-    depends_on:
-      - mongo
-
-  analytics-service-java:
-    build: ./services-java-modules/analytics-service
-    ports:
-      - "3006:3006"
-
-  system-service-java:
-    build: ./services-java-modules/system-service
-    ports:
-      - "3007:3007"
-
-  # placeholders for remaining services (they can be fleshed out later)
-  search-service:
-    build: ./services/search-service
-    ports:
-      - "3003:3003"
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://file-service:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   data-sync-service:
     build: ./services/data-sync-service
-    ports:
-      - "3004:3004"
+    expose:
+      - "8086"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://data-sync-service:8086/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   analytics-service:
     build: ./services/analytics-service
-    ports:
-      - "3006:3006"
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ANALYTICS_DB_NAME=${MYSQL_ANALYTICS_DB_NAME}
+    expose:
+      - "8084"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://analytics-service:8084/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  system-service:
-    build: ./services/system-service
-    ports:
-      - "3007:3007"
+  admin-service:
+    build: ./services/admin-service
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ADMIN_DB_NAME=${MYSQL_ADMIN_DB_NAME}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_ADMIN_DB_NAME=${MONGO_ADMIN_DB_NAME}
+    expose:
+      - "8085"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://admin-service:8085/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-volumes:
-  mysql-data:
-  mongo-data:
-  minio-data:
+  gateway-service:
+    build: ./services/gateway-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      file-service:
+        condition: service_healthy
+      data-sync-service:
+        condition: service_healthy
+      analytics-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      achievement-service:
+        condition: service_healthy
+      admin-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://gateway-service:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

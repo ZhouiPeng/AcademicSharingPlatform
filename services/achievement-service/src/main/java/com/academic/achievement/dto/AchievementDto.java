@@ -5,6 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class AchievementDto {
+
     @JsonProperty("achievementId")
     private String id;
 
@@ -16,11 +17,21 @@ public class AchievementDto {
 
     private List<String> authors;
 
+    private List<String> categories; // comma separated
+
     @JsonProperty("abstract")
     private String abstractText;
 
     private String fileId; // 存储到 File Service 的文件标识
     private Long createdAt;
+
+    public void setCategories(List<String> categories) {
+        this.categories = categories;
+    }
+
+    public List<String> getCategories() {
+        return categories;
+    }
 
     public String getId() {
         return id;
