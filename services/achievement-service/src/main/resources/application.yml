@@ -15,18 +15,6 @@ spring:
 server:
   port: 8082
 
-# URL of user service used by UserClient
-user:
-  service:
-    url: http://localhost:8081
-
 springdoc:
   swagger-ui:
-    enabled: true
-    path: /swagger-ui/index.html
- 
-# 小开关：默认环境（dev / prod）
-app:
-  env: dev
-
-# 注意：数据库配置放到 profile 专用文件中（application-dev.yml / application-prod.yml）
+    enabled: false

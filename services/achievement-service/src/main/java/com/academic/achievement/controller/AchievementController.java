@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import com.academic.achievement.config.EnvironmentConfig;
 import com.academic.achievement.dto.AchievementDto;
@@ -33,10 +34,12 @@ public class AchievementController {
 
     private final AchievementService service;
     private final EnvironmentConfig envConfig;
+    private final WebClient analyticsClient;
 
-    public AchievementController(AchievementService service, EnvironmentConfig envConfig) {
+    public AchievementController(AchievementService service, EnvironmentConfig envConfig, WebClient.Builder webClientBuilder) {
         this.service = service;
         this.envConfig = envConfig;
+        this.analyticsClient = webClientBuilder.baseUrl("http://localhost:8084").build();
     }
 
     @PostMapping
@@ -44,22 +47,44 @@ public class AchievementController {
     public ResponseEntity<ApiResponse<Object>> upload(@RequestBody AchievementDto dto) {
         String id = service.upload(dto);
         java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);
+        // report author relationship to analytics-service asynchronously (fire-and-forget)
+        try {
+            String userId = dto.getUserId();
+            String authors = "";
+            if (dto.getAuthors() != null && !dto.getAuthors().isEmpty()) {
+                authors = dto.getAuthors().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","));
+            }
+            if (userId != null && !userId.isBlank() && (authors != null && !authors.isBlank())) {
+                java.util.Map<String, String> body = java.util.Map.of("userId", userId, "authors", authors);
+                analyticsClient.post()
+                        .uri("/api/analysis/author-relationship")
+                        .bodyValue(body)
+                        .retrieve()
+                        .toBodilessEntity()
+                        .subscribe();
+            }
+        } catch (Exception ignore) {
+        }
+
         return ResponseEntity.status(201).body(ApiResponse.success(data, "上传成功"));
     }
-
 
     @PutMapping("/{achId}")
     @Operation(summary = "更新成就（部分字段）")
     public ResponseEntity<ApiResponse<Object>> update(@PathVariable String achId, @RequestBody AchievementUpdateRequest req) {
         // Accept body: { "achievementId": "...", "data": { ... } }
         Map<String, Object> data = req.getData();
-        if (data == null || data.isEmpty()) return ResponseEntity.badRequest().body(ApiResponse.error("data is empty"));
+        if (data == null || data.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("data is empty"));
+        }
 
         // allowed keys must match Achievement properties
         java.util.Set<String> allowed = java.util.Set.of("title", "userId", "fileId", "type", "authors", "abstract", "categories");
         java.util.List<String> invalid = new java.util.ArrayList<>();
         for (String k : data.keySet()) {
-            if (!allowed.contains(k)) invalid.add(k);
+            if (!allowed.contains(k)) {
+                invalid.add(k);
+            }
         }
         if (!invalid.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("invalid data keys: " + String.join(",", invalid)));
@@ -67,25 +92,42 @@ public class AchievementController {
 
         AchievementDto dto = new AchievementDto();
         // map allowed fields from data (with type handling)
-        if (data.containsKey("title")) dto.setTitle((String) data.get("title"));
-        if (data.containsKey("userId")) dto.setUserId((String) data.get("userId"));
-        if (data.containsKey("fileId")) dto.setFileId((String) data.get("fileId"));
+        if (data.containsKey("title")) {
+            dto.setTitle((String) data.get("title"));
+        }
+        if (data.containsKey("userId")) {
+            dto.setUserId((String) data.get("userId"));
+        }
+        if (data.containsKey("fileId")) {
+            dto.setFileId((String) data.get("fileId"));
+        }
         if (data.containsKey("categories")) {
             Object c = data.get("categories");
-            if (c instanceof java.util.List) dto.setAuthors(((java.util.List<?>) c).stream().map(Object::toString).toList());
-            else if (c instanceof String) dto.setAuthors(java.util.List.of(((String) c).split(",")));
+            if (c instanceof java.util.List) {
+                dto.setCategories(((java.util.List<?>) c).stream().map(Object::toString).toList());
+            } else if (c instanceof String) {
+                dto.setCategories(java.util.List.of(((String) c).split(",")));
+            }
         }
         if (data.containsKey("type")) {
             Object t = data.get("type");
-            if (t instanceof Number) dto.setType(((Number) t).intValue());
-            else dto.setType(Integer.valueOf(String.valueOf(t)));
+            if (t instanceof Number) {
+                dto.setType(((Number) t).intValue());
+            } else {
+                dto.setType(Integer.valueOf(String.valueOf(t)));
+            }
         }
         if (data.containsKey("authors")) {
             Object a = data.get("authors");
-            if (a instanceof java.util.List) dto.setAuthors(((java.util.List<?>) a).stream().map(Object::toString).toList());
-            else if (a instanceof String) dto.setAuthors(java.util.List.of(((String) a).split(",")));
+            if (a instanceof java.util.List) {
+                dto.setAuthors(((java.util.List<?>) a).stream().map(Object::toString).toList());
+            } else if (a instanceof String) {
+                dto.setAuthors(java.util.List.of(((String) a).split(",")));
+            }
         }
-        if (data.containsKey("abstract")) dto.setAbstractText((String) data.get("abstract"));
+        if (data.containsKey("abstract")) {
+            dto.setAbstractText((String) data.get("abstract"));
+        }
 
         service.update(achId, dto);
         return ResponseEntity.ok(ApiResponse.success(null, "修改成功"));
@@ -181,6 +223,19 @@ public class AchievementController {
             @RequestParam(required = false) String q,
             @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        // report search term to analytics-service asynchronously (fire-and-forget)
+        try {
+            if (q != null && !q.isBlank()) {
+                java.util.Map<String, String> body = java.util.Map.of("term", q);
+                analyticsClient.post()
+                        .uri("/api/analysis/collect-search")
+                        .bodyValue(body)
+                        .retrieve()
+                        .toBodilessEntity()
+                        .subscribe();
+            }
+        } catch (Exception ignore) {
+        }
         java.util.List<AchievementDto> list = service.search(q);
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);

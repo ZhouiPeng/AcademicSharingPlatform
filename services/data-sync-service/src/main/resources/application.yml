@@ -1,25 +1,10 @@
-spring:
-  application:
-    name: data-sync-service
 server:
   port: 8086
-
-achievement:
-  service:
-    url: http://localhost:8082
-file:
-  service:
-    url: http://localhost:8083
-
-springdoc:
-  swagger-ui:
-    enabled: true
-    path: /swagger-ui/index.html
 
 # DataSync auto-crawl configuration
 datasync:
   # Whether the scheduled auto-crawl is enabled. Set true to enable daily 02:00 run.
-  auto-enabled: false
+  auto-enabled: ${auto-enabled:false}
   # Comma-separated list of categories to fetch from OpenAlex/arXiv (example values)
   auto-categories: cs.AI,cs.CL,cs.LG
   # Number of items to fetch per category
@@ -27,8 +12,13 @@ datasync:
 
 # Scheduling / task pool (optional tuning)
 spring:
+  application:
+    name: data-sync-service
   task:
     scheduling:
       pool:
         size: 4
-      thread-name-prefix: data-sync-
+
+springdoc:
+  swagger-ui:
+    enabled: false

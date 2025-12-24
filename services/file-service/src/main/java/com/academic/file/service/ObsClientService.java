@@ -8,5 +8,4 @@ public interface ObsClientService {
     void uploadPdf(MultipartFile file, String filePath);
     void delete(String filePath);
     InputStream getObject(String filePath);
-    void changePath(String oldFilePath, String newFilePath);
 }

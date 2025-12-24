@@ -25,7 +25,7 @@ public class FileServiceClient {
     private final WebClient webClient;
 
     public FileServiceClient(WebClient.Builder builder,
-            @Value("${file.service.url:http://localhost:8083}") String baseUrl) {
+            @Value("${file.service.url:http://file-service:8083}") String baseUrl) {
         this.webClient = builder.baseUrl(baseUrl).build();
     }
 
@@ -116,7 +116,11 @@ public class FileServiceClient {
                 };
 
                 MultiValueMap<String, Object> parts = new org.springframework.util.LinkedMultiValueMap<>();
-                parts.add("file", resource);
+                // 添加三个字段
+                parts.add("fileName", filename);  // 新的JSON字段
+                parts.add("url", pdfUrl);         // 新的JSON字段
+                parts.add("file", resource);      // 原有的文件字段
+                // ====================
 
                 return webClient.post()
                         .uri(uriBuilder -> uriBuilder.path("/api/files/upload/{uploaderId}").build(uploaderId))

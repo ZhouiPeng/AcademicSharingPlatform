@@ -17,13 +17,12 @@ public class FilePermissionsEntity {
     @Column(name = "id")
     private String id;
 
-    // reference to files.id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id", nullable = false, referencedColumnName = "id")
     private FileEntity file;
 
     @Column(name = "principal_type", nullable = false, length = 16)
-    private String principalType; // 'user','group','role'
+    private String principalType;
 
     @Column(name = "principal_id", nullable = false, length = 128)
     private String principalId;

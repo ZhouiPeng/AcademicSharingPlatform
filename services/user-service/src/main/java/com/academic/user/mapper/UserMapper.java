@@ -35,4 +35,6 @@ public interface UserMapper extends BaseMapper<User>
     int countByFolloerId(String userId);
 
     int countByFolloeeId(String userId);
+
+    int count();
 }

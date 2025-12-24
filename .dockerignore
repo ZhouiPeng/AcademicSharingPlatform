@@ -1,0 +1,11 @@
+target
+.git
+.idea
+*.iml
+.gradle
+node_modules
+logs
+*.log
+docker-compose-db.yml
+.env
+**/target
