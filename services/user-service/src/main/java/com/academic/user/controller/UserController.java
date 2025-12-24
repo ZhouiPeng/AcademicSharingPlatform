@@ -3,6 +3,8 @@ package com.academic.user.controller;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.academic.user.common.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,10 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.academic.user.common.ApiResponse;
-import com.academic.user.common.JwtUtil;
-import com.academic.user.common.Secure;
-import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
 import com.academic.user.service.UserService;
 import com.alibaba.fastjson.JSON;
@@ -36,7 +34,7 @@ public class UserController {
 
     private final UserService userService;
 
-    Map<String, Object> data = new HashMap<>();
+    Map<String, Object> response = new HashMap<>();
 
     public UserController(UserService userService) {
         this.userService = userService;
@@ -45,7 +43,7 @@ public class UserController {
     //注册
     @PostMapping("/normal/register/{validateId}")
     @ResponseBody
-    public String registerNormal(@RequestBody Map<String, Object> requestMap, @PathVariable("validateId") String validateId) {
+    public ResponseEntity<String> registerNormal(@RequestBody Map<String, Object> requestMap, @PathVariable("validateId") String validateId) {
         //生成User
         try {
             String verificationCode = (String) requestMap.get("verificationCode");
@@ -53,14 +51,13 @@ public class UserController {
             userService.validateVerificationCode(validateId, verificationCode);
             requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
             String userId = userService.registerNormal(requestUser);
-            data.put("userId", userId);
-            return ApiResponse.success(
-                    "注册成功", JSON.toJSONString(data));
+            response.put("userId", userId);
+            return ResponseEntity.ok().body(ApiResponse.success("注册成功", JSON.toJSONString(response)));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
+            return ResponseEntity.internalServerError().body(ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
     }
 
@@ -73,15 +70,15 @@ public class UserController {
             User user = userService.login(requestUser);
             String token = JwtUtil.generateToken(user.getUserId());
 
-            data.put("token", token);
-            data.put("expiresIn", JwtUtil.expirationTime);
-            data.put("user", user);
-            return ApiResponse.success("登录成功", JSON.toJSONString(data));
+            response.put("token", token);
+            response.put("expiresIn", JwtUtil.expirationTime);
+            response.put("user", user);
+            return ApiResponse.success("登录成功", JSON.toJSONString(response));
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试");
         }
     }
 
@@ -94,20 +91,20 @@ public class UserController {
             User user = userService.getCurrent(userId);
             return ApiResponse.success("获取成功", JSON.toJSONString(user));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
 
     }
@@ -123,7 +120,7 @@ public class UserController {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试");
         }
 
     }
@@ -139,20 +136,20 @@ public class UserController {
             userService.updateCurrent(user);
             return ApiResponse.success("修改成功", null);
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
     }
 
@@ -165,23 +162,27 @@ public class UserController {
             if (token != null && !token.isEmpty()) {
                 String userId = JwtUtil.analyseToken(token);
                 String validateId = userService.generateVerificationCode(userId, null);
-                data.put("validateId", validateId);
-                return ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(data));
+                response.put("validateId", validateId);
+                return ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(response));
             }
-            if (requestBody.get("mail") == null || requestBody.get("mail").isEmpty()) {
-                return ApiResponse.fail(-1, "邮箱不能为空");
+            else if(requestBody == null) {
+                return ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "请求体不能为空");
             }
-            String validateId = userService.generateVerificationCode(null, requestBody.get("mail"));
-            return ApiResponse.success("验证码已发送，请检查邮箱", validateId);
+            if (requestBody.get("email") == null || requestBody.get("email").isEmpty()) {
+                return ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "邮箱不能为空");
+            }
+            String validateId = userService.generateVerificationCode(null, requestBody.get("email"));
+            response.put("validateId", validateId);
+            return ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(response));
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch(MailException e)
         {
-            return ApiResponse.fail(0, e.getMessage());
+            return ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, e.getMessage());
         }
         catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙，请稍后再试");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试");
         }
     }
 
@@ -196,20 +197,20 @@ public class UserController {
             userService.resetPassword(userId, requestBody.get("password"));
             return ApiResponse.success("修改成功", null);
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
     }
     //关注用户
@@ -222,20 +223,20 @@ public class UserController {
             userService.follow(targetId, userId);
             return ApiResponse.success("关注成功", null);
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
         } catch (ServiceError e) {
             return ApiResponse.fail(e.getCode(), e.getMsg());
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
     }
 
@@ -277,18 +278,18 @@ public class UserController {
             IPage<User> userPage = userService.getFollows(userId, pageNum, pageSize);
             return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
     }
 
@@ -303,18 +304,18 @@ public class UserController {
             IPage<User> userPage = userService.getFans(userId, pageNum, pageSize);
             return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
     }
 
@@ -328,18 +329,18 @@ public class UserController {
             IPage<User> userPage = userService.getUsers(pageNum, pageSize);
             return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
     }
 }
