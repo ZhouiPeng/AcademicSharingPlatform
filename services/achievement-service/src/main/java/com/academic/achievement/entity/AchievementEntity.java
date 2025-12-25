@@ -22,6 +22,8 @@ public class AchievementEntity {
     private String abstractText;
 
     private Long createdAt;
+    private Long downloadCount;
+    private Integer collectCount;
 
     @ManyToMany
     private Set<FolderEntity> folders = new HashSet<>();
@@ -96,6 +98,22 @@ public class AchievementEntity {
 
     public void setCreatedAt(Long createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getDownloadCount() {
+        return downloadCount == null ? 0L : downloadCount;
+    }
+
+    public void setDownloadCount(Long downloadCount) {
+        this.downloadCount = downloadCount;
+    }
+
+    public Integer getCollectCount() {
+        return collectCount == null ? 0 : collectCount;
+    }
+
+    public void setCollectCount(Integer collectCount) {
+        this.collectCount = collectCount;
     }
 
     public Set<FolderEntity> getFolders() {
