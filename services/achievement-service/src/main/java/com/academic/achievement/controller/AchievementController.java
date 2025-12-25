@@ -140,14 +140,6 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(null, "删除成功"));
     }
 
-    // 保留原有简单查阅接口
-    @GetMapping("/achievements/{achId}")
-    @Operation(summary = "查看成就详情（备用路径）")
-    public ResponseEntity<ApiResponse<AchievementDto>> viewDetail(@PathVariable String achId) {
-        AchievementDto d = service.get(achId);
-        return ResponseEntity.ok(ApiResponse.success(d));
-    }
-
     @GetMapping("/{achId}")
     @Operation(summary = "获取成就详情")
     public ResponseEntity<ApiResponse<AchievementDto>> get(@PathVariable String achId) {
