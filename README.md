@@ -46,7 +46,10 @@ docker --context ecs compose --env-file .env -p academicsharingplatform -f docke
 4) Recompose a specific service
 ```powershell
 docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml stop <service>
+
 docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml rm -f <service>
+
 make SERVICE=<service> build-service
+
 docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml up -d --build <service>
 ```

@@ -1,12 +1,12 @@
 package com.academic.user.service;
 
+import java.security.NoSuchAlgorithmException;
+
 import org.springframework.stereotype.Service;
 
 import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-
-import java.security.NoSuchAlgorithmException;
 
 @Service
 public interface UserService {
@@ -27,7 +27,6 @@ public interface UserService {
 
     void resetPassword(String userId, String newPasswordHash) throws ServiceError, NoSuchAlgorithmException, Exception;
 
-
     void follow(String targetId, String userId) throws ServiceError;
 
     void unfollow(String targetId, String userId) throws ServiceError;
@@ -37,4 +36,6 @@ public interface UserService {
     IPage<User> getFans(String userId, int pageNum, int pageSize);
 
     IPage<User> getUsers(int pageNum, int pageSize);
+
+    IPage<User> getUsersByRole(int pageNum, int pageSize, String role) throws ServiceError;
 }
