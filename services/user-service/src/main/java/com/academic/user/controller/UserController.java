@@ -43,7 +43,7 @@ public class UserController {
     //注册
     @PostMapping("/normal/register/{validateId}")
     @ResponseBody
-    public ResponseEntity<String> registerNormal(@RequestBody Map<String, Object> requestMap, @PathVariable("validateId") String validateId) {
+    public ResponseEntity<ApiResponse> registerNormal(@RequestBody Map<String, Object> requestMap, @PathVariable("validateId") String validateId) {
         //生成User
         try {
             String verificationCode = (String) requestMap.get("verificationCode");
@@ -52,19 +52,21 @@ public class UserController {
             requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
             String userId = userService.registerNormal(requestUser);
             response.put("userId", userId);
-            return ResponseEntity.ok().body(ApiResponse.success("注册成功", JSON.toJSONString(response)));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("注册成功", JSON.toJSONString(response)));
         } catch (ServiceError e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.internalServerError().body(ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
     }
 
     //登录
     @PostMapping("/login")
     @ResponseBody
-    public String login(@RequestBody User requestUser) {
+    public ResponseEntity<ApiResponse> login(@RequestBody User requestUser) {
         try {
             requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
             User user = userService.login(requestUser);
@@ -73,38 +75,48 @@ public class UserController {
             response.put("token", token);
             response.put("expiresIn", JwtUtil.expirationTime);
             response.put("user", user);
-            return ApiResponse.success("登录成功", JSON.toJSONString(response));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("登录成功", JSON.toJSONString(response)));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
     }
 
     //获取当前用户信息
     @GetMapping("/current")
     @ResponseBody
-    public String getCurrent(@RequestHeader(name = "Authorization") String token) {
+    public ResponseEntity<ApiResponse> getCurrent(@RequestHeader(name = "Authorization") String token) {
         try {
             String userId = JwtUtil.analyseToken(token);
             User user = userService.getCurrent(userId);
-            return ApiResponse.success("获取成功", JSON.toJSONString(user));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("获取成功", JSON.toJSONString(user)));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
 
     }
@@ -112,260 +124,332 @@ public class UserController {
     //获取特定用户信息
     @GetMapping("/{userId}")
     @ResponseBody
-    public String getById(@PathVariable("userId") String userId) {
+    public ResponseEntity<ApiResponse> getById(@PathVariable("userId") String userId) {
         try {
             User user = userService.getById(userId);
-            return ApiResponse.success("获取成功", JSON.toJSONString(user));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("获取成功", JSON.toJSONString(user)));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
     }
 
     //修改当前用户信息
     @PutMapping("/current")
     @ResponseBody
-    public String updateCurrent(@RequestHeader(name = "Authorization") String token,
+    public ResponseEntity<ApiResponse> updateCurrent(@RequestHeader(name = "Authorization") String token,
             @RequestBody User user) {
         try {
             String userId = JwtUtil.analyseToken(token);
             user.setUserId(userId);
             userService.updateCurrent(user);
-            return ApiResponse.success("修改成功", null);
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("修改成功", null));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 
     //发送验证码
     @PostMapping("/verification/send")
     @ResponseBody
-    public String registerValidation(@RequestHeader(name = "Authorization", required = false) String token,
+    public ResponseEntity<ApiResponse> registerValidation(@RequestHeader(name = "Authorization", required = false) String token,
             @RequestBody(required = false) Map<String, String> requestBody) {
         try {
             if (token != null && !token.isEmpty()) {
                 String userId = JwtUtil.analyseToken(token);
                 String validateId = userService.generateVerificationCode(userId, null);
                 response.put("validateId", validateId);
-                return ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(response));
+                return ResponseEntity.ok().body(
+                        ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(response)));
             }
             else if(requestBody == null) {
-                return ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "请求体不能为空");
+                return ResponseEntity.badRequest().body(
+                        ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "请求体不能为空"));
             }
             if (requestBody.get("email") == null || requestBody.get("email").isEmpty()) {
-                return ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "邮箱不能为空");
+                return ResponseEntity.badRequest().body(
+                        ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "邮箱不能为空"));
             }
             String validateId = userService.generateVerificationCode(null, requestBody.get("email"));
             response.put("validateId", validateId);
-            return ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(response));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(response)));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch(MailException e)
         {
-            return ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, e.getMessage()));
         }
         catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
     }
 
     //重置密码验证验证码
     @PostMapping("/password/reset/{validateId}")
     @ResponseBody
-    public String resetPassword(@RequestHeader(name = "Authorization") String token,
+    public ResponseEntity<ApiResponse> resetPassword(@RequestHeader(name = "Authorization") String token,
             @PathVariable("validateId") String validateId, @RequestBody Map<String, String> requestBody) {
         try {
             String userId = JwtUtil.analyseToken(token);
             userService.validateVerificationCode(validateId, requestBody.get("code"));
             userService.resetPassword(userId, requestBody.get("password"));
-            return ApiResponse.success("修改成功", null);
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("修改成功", null));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 
     //关注用户
     @PostMapping("/follow/{userId}")
     @ResponseBody
-    public String follow(@RequestHeader(name = "Authorization") String token,
+    public ResponseEntity<ApiResponse> follow(@RequestHeader(name = "Authorization") String token,
             @PathVariable("userId") String targetId) {
         try {
             String userId = JwtUtil.analyseToken(token);
             userService.follow(targetId, userId);
-            return ApiResponse.success("关注成功", null);
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("关注成功", null));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 
     //取消关注
     @DeleteMapping("/follow/{userId}")
     @ResponseBody
-    public String unfollow(@RequestHeader(name = "Authorization") String token,
+    public ResponseEntity<ApiResponse> unfollow(@RequestHeader(name = "Authorization") String token,
             @PathVariable("userId") String targetId) {
         try {
             String userId = JwtUtil.analyseToken(token);
             userService.follow(targetId, userId);
-            return ApiResponse.success("取消成功", null);
+            return ResponseEntity.ok(ApiResponse.success("取消成功", null));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (ServiceError e) {
-            return ApiResponse.fail(e.getCode(), e.getMsg());
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 
     //查看关注用户
     @GetMapping("/follows")
     @ResponseBody
-    public String getFollows(@RequestHeader(name = "Authorization") String token,
+    public ResponseEntity<ApiResponse> getFollows(@RequestHeader(name = "Authorization") String token,
             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
             String userId = JwtUtil.analyseToken(token);
             IPage<User> userPage = userService.getFollows(userId, pageNum, pageSize);
-            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("获取成功", JSON.toJSONString(userPage)));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 
     //查看粉丝
     @GetMapping("/fans")
     @ResponseBody
-    public String getFans(@RequestHeader(name = "Authorization") String token,
+    public ResponseEntity<ApiResponse> getFans(@RequestHeader(name = "Authorization") String token,
             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
             String userId = JwtUtil.analyseToken(token);
             IPage<User> userPage = userService.getFans(userId, pageNum, pageSize);
-            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("获取成功", JSON.toJSONString(userPage)));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 
     //查看用户
     @GetMapping("")
     @ResponseBody
-    public String getUsers(
+    public ResponseEntity<ApiResponse> getUsers(
             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
             IPage<User> userPage = userService.getUsers(pageNum, pageSize);
-            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("获取成功", JSON.toJSONString(userPage)));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 
     //根据Role查看用户列表
     @GetMapping("/role/{role}")
     @ResponseBody
-    public String getUsersByRole(@PathVariable("role") String role,
+    public ResponseEntity<ApiResponse> getUsersByRole(@PathVariable("role") String role,
             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
             IPage<User> userPage = userService.getUsersByRole(pageNum, pageSize, role);
-            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("获取成功", JSON.toJSONString(userPage)));
         } catch (ExpiredJwtException e) {
-            return ApiResponse.fail(-1, "登陆状态已过期");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
         } catch (MalformedJwtException e) {
-            return ApiResponse.fail(-1, "Token格式错误");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.WRONG_FORMAT_TOKEN, "Token格式错误"));
         } catch (UnsupportedJwtException e) {
-            return ApiResponse.fail(-1, "Token不被支持");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NOT_SUPPORT, "Token不被支持"));
         } catch (IllegalArgumentException e) {
-            return ApiResponse.fail(-1, "Token为空或无效");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_NULL, "Token为空或无效"));
         } catch (JwtException e) {
-            return ApiResponse.fail(-1, "Token无效,请重新登录");
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(ResultCode.TOKEN_IS_INVALID, "Token无效,请重新登录"));
+        } catch (ServiceError e) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
             e.printStackTrace();
-            return ApiResponse.fail(-1, "服务器繁忙");
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
 }

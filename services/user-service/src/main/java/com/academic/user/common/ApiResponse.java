@@ -23,16 +23,16 @@ public class ApiResponse {
 //        return new ApiResponse(1, "操作成功", data).toString();
 //    }
 
-    public static  String success(String msg, String data) {
-        return new ApiResponse(1, msg, data).toString();
+    public static  ApiResponse success(String msg, String data) {
+        return new ApiResponse(1, msg, data);
     }
 
-    public static  String fail(String msg) {
-        return new ApiResponse(0, msg, "").toString();
+    public static  ApiResponse fail(String msg) {
+        return new ApiResponse(0, msg, "");
     }
-    public static  String fail(int code, String msg)
+    public static  ApiResponse fail(int code, String msg)
     {
-        return new ApiResponse(code, msg, "").toString();
+        return new ApiResponse(code, msg, "");
     }
 
     // getters / setters
