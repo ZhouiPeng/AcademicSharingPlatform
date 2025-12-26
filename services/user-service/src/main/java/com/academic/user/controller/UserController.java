@@ -42,7 +42,9 @@ public class UserController {
     //注册
     @PostMapping("/normal/register/{validateId}")
     @ResponseBody
-    public ResponseEntity<ApiResponse> registerNormal(@RequestBody Map<String, Object> requestMap, @PathVariable("validateId") String validateId) {
+    public ResponseEntity<ApiResponse> registerNormal(
+            @RequestBody Map<String, Object> requestMap, 
+            @PathVariable String validateId) {
         //生成User
         try {
             String verificationCode = (String) requestMap.get("verificationCode");
@@ -52,7 +54,7 @@ public class UserController {
             String userId = userService.registerNormal(requestUser);
             response.put("userId", userId);
             return ResponseEntity.ok().body(
-                    ApiResponse.success("注册成功", JSON.toJSONString(response)));
+                    ApiResponse.success("注册成功", response));
         } catch (ServiceError e) {
             return ResponseEntity.badRequest().body(ApiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
@@ -126,7 +128,7 @@ public class UserController {
         try {
             User user = userService.getById(userId);
             return ResponseEntity.ok().body(
-                    ApiResponse.success("获取成功", JSON.toJSONString(user)));
+                    ApiResponse.success("获取成功", user));
         } catch (ServiceError e) {
             return ResponseEntity.badRequest().body(
                     ApiResponse.fail(e.getCode(), e.getMsg()));
@@ -393,7 +395,7 @@ public class UserController {
         try {
             IPage<User> userPage = userService.getUsers(pageNum, pageSize);
             return ResponseEntity.ok().body(
-                    ApiResponse.success("获取成功", JSON.toJSONString(userPage)));
+                    ApiResponse.success("获取成功", userPage));
         } catch (ExpiredJwtException e) {
             return ResponseEntity.badRequest().body(
                     ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
@@ -425,7 +427,7 @@ public class UserController {
         try {
             IPage<User> userPage = userService.getUsersByRole(pageNum, pageSize, role);
             return ResponseEntity.ok().body(
-                    ApiResponse.success("获取成功", JSON.toJSONString(userPage)));
+                    ApiResponse.success("获取成功", userPage));
         } catch (ExpiredJwtException e) {
             return ResponseEntity.badRequest().body(
                     ApiResponse.fail(ResultCode.TOKEN_EXPIRED, "登陆状态已过期"));
@@ -458,7 +460,7 @@ public class UserController {
             int num = userService.getUsersNum();
             response.put("userNum", num);
             return ResponseEntity.ok().body(
-                    ApiResponse.success("获取成功", JSON.toJSONString(response)));
+                    ApiResponse.success("获取成功", response));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(
