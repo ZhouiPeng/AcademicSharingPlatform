@@ -42,6 +42,9 @@
     <select id="selectPageByFolloweeId" resultType="java.lang.String">
         select follower_id from user_follows where followee_id = #{userId}
     </select>
+    <select id="selectPageByRole" resultType="java.lang.String">
+        select user_id from users where role = #{role}
+    </select>
     <select id="countByFolloerId" resultType="java.lang.Integer">
         select count(*) from user_follows where follower_id = #{userId}
     </select>

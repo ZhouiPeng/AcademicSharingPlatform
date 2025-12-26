@@ -117,6 +117,7 @@ public class FileServiceClient {
 
                 MultiValueMap<String, Object> parts = new org.springframework.util.LinkedMultiValueMap<>();
                 // 添加三个字段
+                parts.add("fileType", "PAPER"); // 新的JSON字段
                 parts.add("fileName", filename);  // 新的JSON字段
                 parts.add("url", pdfUrl);         // 新的JSON字段
                 parts.add("file", resource);      // 原有的文件字段

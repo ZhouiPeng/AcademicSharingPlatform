@@ -8,12 +8,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-import com.academic.user.common.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import com.academic.user.common.DefaultConfig;
+import com.academic.user.common.Role;
+import com.academic.user.common.Secure;
+import com.academic.user.common.ServiceError;
+import com.academic.user.common.TokenEntry;
 import com.academic.user.dto.User;
 import com.academic.user.mapper.UserMapper;
 import com.academic.user.service.UserService;
@@ -95,7 +99,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String generateVerificationCode(String userId, String mail) throws Exception {
+    public String generateVerificationCode(String userId, String mail)
+    {
         String validateId;
         if (userId != null) {
             User user = userMapper.selectOneByUserId(userId);
@@ -112,41 +117,40 @@ public class UserServiceImpl implements UserService {
         resetTokens.put(validateId, new TokenEntry(code, expireAt));
 
         // send verification code via SMTP using configured JavaMailSender
-            SimpleMailMessage message = new SimpleMailMessage();
-            String from = System.getenv("SMTP_USER");
-            if (from != null && !from.isEmpty()) {
-                message.setFrom(from);
-            }
-            message.setTo(mail);
-            message.setSubject("[user-service] 验证码 / Verification Code");
-            message.setText("您的验证码是: " + code + "。有效期 10 分钟。\nIf you didn't request this, please ignore this email.");
-            mailSender.send(message);
+        SimpleMailMessage message = new SimpleMailMessage();
+        String from = System.getenv("SMTP_USER");
+        if (from != null && !from.isEmpty()) {
+            message.setFrom(from);
+        }
+        message.setTo(mail);
+        message.setSubject("[user-service] 验证码 / Verification Code");
+        message.setText("您的验证码是: " + code + "。有效期 10 分钟。\nIf you didn't request this, please ignore this email.");
+        mailSender.send(message);
         return validateId;
     }
 
     @Override
     public void validateVerificationCode(String validateId, String code) throws ServiceError {
         if (validateId == null || validateId.isEmpty() || code == null || code.isEmpty()) {
-            throw new ServiceError("参数错误", 0);
+            throw new ServiceError("参数错误1", 0);
         }
         TokenEntry entry = resetTokens.get(validateId);
         if (entry == null) {
-            throw new ServiceError("参数错误", 0);
+            throw new ServiceError("参数错误2", 0);
         }
         if (System.currentTimeMillis() > entry.expireAt()) {
             resetTokens.remove(validateId);
-            throw new ServiceError("参数错误", 0);
+            throw new ServiceError("参数错误3", 0);
         }
         if (entry.code().equals(code)) {
             resetTokens.remove(validateId);
             return;
         }
-        throw new ServiceError("参数错误", 0);
+        throw new ServiceError("参数错误4", 0);
     }
 
     @Override
-    public void resetPassword(String userId, String newPasswordHash) throws Exception
-    {
+    public void resetPassword(String userId, String newPasswordHash) throws Exception {
         User user = userMapper.selectOneByUserId(userId);
         if (user == null) {
             throw new ServiceError("用户不存在", 0);
@@ -217,13 +221,29 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public IPage<User> getUsers(int pageNum, int pageSize)
-    {
+    public IPage<User> getUsers(int pageNum, int pageSize) {
         int count = userMapper.count();
         IPage<User> page = new Page<>(pageNum, pageSize, count);
         IPage<User> result = userMapper.selectPage(page, null);
         return result;
     }
 
-}
+    @Override
+    public IPage<User> getUsersByRole(int pageNum, int pageSize, String role) throws ServiceError {
+        int count = userMapper.count();
+        IPage<User> page = new Page<>(pageNum, pageSize, count);
+        List<String> userIdList = userMapper.selectPageByRole(page, role);
+        List<User> userList = new ArrayList<>();
+        for (String id : userIdList) {
+            userList.add(userMapper.selectOneByUserId(id));
+        }
+        page.setRecords(userList);
+        return page;
 
+    }
+
+    @Override
+    public int getUsersNum() {
+        return userMapper.count();
+    }
+}

@@ -24,6 +24,8 @@ public class AchievementDto {
 
     private String fileId; // 存储到 File Service 的文件标识
     private Long createdAt;
+    private Long downloadCount;
+    private Integer collectCount;
 
     public void setCategories(List<String> categories) {
         this.categories = categories;
@@ -95,5 +97,21 @@ public class AchievementDto {
 
     public void setCreatedAt(Long createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getDownloadCount() {
+        return downloadCount == null ? 0L : downloadCount;
+    }
+
+    public void setDownloadCount(Long downloadCount) {
+        this.downloadCount = downloadCount;
+    }
+
+    public Integer getCollectCount() {
+        return collectCount == null ? 0 : collectCount;
+    }
+
+    public void setCollectCount(Integer collectCount) {
+        this.collectCount = collectCount;
     }
 }
