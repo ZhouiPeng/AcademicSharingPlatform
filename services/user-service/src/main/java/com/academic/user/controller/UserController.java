@@ -244,7 +244,7 @@ public class UserController {
             @PathVariable("userId") String targetId) {
         try {
             String userId = JwtUtil.analyseToken(token);
-            userService.follow(targetId, userId);
+            userService.unfollow(targetId, userId);
             return ApiResponse.success("取消成功", null);
         } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
