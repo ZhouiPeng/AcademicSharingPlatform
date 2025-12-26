@@ -42,7 +42,7 @@ public class JwtUtil {
         return token;
     }
 
-    public String getExpirationTime() {
+    public static String getExpirationTime() {
         return String.valueOf(expirationTime);
     }
 }
