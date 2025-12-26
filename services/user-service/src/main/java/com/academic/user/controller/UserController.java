@@ -3,7 +3,6 @@ package com.academic.user.controller;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.academic.user.common.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +17,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.academic.user.common.ApiResponse;
+import com.academic.user.common.JwtUtil;
+import com.academic.user.common.ResultCode;
+import com.academic.user.common.Secure;
+import com.academic.user.common.ServiceError;
 import com.academic.user.dto.User;
 import com.academic.user.service.UserService;
 import com.alibaba.fastjson.JSON;
@@ -187,8 +191,7 @@ public class UserController {
                 response.put("validateId", validateId);
                 return ResponseEntity.ok().body(
                         ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(response)));
-            }
-            else if(requestBody == null) {
+            } else if (requestBody == null) {
                 return ResponseEntity.badRequest().body(
                         ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "请求体不能为空"));
             }
@@ -203,12 +206,10 @@ public class UserController {
         } catch (ServiceError e) {
             return ResponseEntity.badRequest().body(
                     ApiResponse.fail(e.getCode(), e.getMsg()));
-        } catch(MailException e)
-        {
+        } catch (MailException e) {
             return ResponseEntity.badRequest().body(
                     ApiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, e.getMessage()));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(
                     ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
