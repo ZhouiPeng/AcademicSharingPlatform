@@ -122,7 +122,6 @@ public class UserController {
             e.printStackTrace();
             return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试");
         }
-
     }
 
     //修改当前用户信息
@@ -157,7 +156,7 @@ public class UserController {
     @PostMapping("/verification/send")
     @ResponseBody
     public String registerValidation(@RequestHeader(name = "Authorization", required = false) String token,
-                                     @RequestBody(required = false) Map<String, String> requestBody) {
+            @RequestBody(required = false) Map<String, String> requestBody) {
         try {
             if (token != null && !token.isEmpty()) {
                 String userId = JwtUtil.analyseToken(token);
@@ -213,6 +212,7 @@ public class UserController {
             return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
         }
     }
+
     //关注用户
     @PostMapping("/follow/{userId}")
     @ResponseBody
@@ -323,8 +323,8 @@ public class UserController {
     @GetMapping("")
     @ResponseBody
     public String getUsers(
-                             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
-                             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
+            @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
             IPage<User> userPage = userService.getUsers(pageNum, pageSize);
             return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
@@ -341,6 +341,31 @@ public class UserController {
         } catch (Exception e) {
             e.printStackTrace();
             return ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙");
+        }
+    }
+
+    //根据Role查看用户列表
+    @GetMapping("/role/{role}")
+    @ResponseBody
+    public String getUsersByRole(@PathVariable("role") String role,
+            @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        try {
+            IPage<User> userPage = userService.getUsersByRole(pageNum, pageSize, role);
+            return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
+        } catch (ExpiredJwtException e) {
+            return ApiResponse.fail(-1, "登陆状态已过期");
+        } catch (MalformedJwtException e) {
+            return ApiResponse.fail(-1, "Token格式错误");
+        } catch (UnsupportedJwtException e) {
+            return ApiResponse.fail(-1, "Token不被支持");
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.fail(-1, "Token为空或无效");
+        } catch (JwtException e) {
+            return ApiResponse.fail(-1, "Token无效,请重新登录");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.fail(-1, "服务器繁忙");
         }
     }
 }

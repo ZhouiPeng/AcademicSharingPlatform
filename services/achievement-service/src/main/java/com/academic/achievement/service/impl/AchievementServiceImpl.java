@@ -2,11 +2,14 @@ package com.academic.achievement.service.impl;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import com.academic.achievement.dto.AchievementDto;
@@ -23,10 +26,17 @@ public class AchievementServiceImpl implements AchievementService {
 
     private final AchievementRepository achievementRepository;
     private final FolderRepository folderRepository;
+    private final StringRedisTemplate redis;
 
-    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository) {
+    private final DefaultRedisScript<Long> decrIfPositiveScript;
+
+    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, StringRedisTemplate redis) {
         this.achievementRepository = achievementRepository;
         this.folderRepository = folderRepository;
+        this.redis = redis;
+        this.decrIfPositiveScript = new DefaultRedisScript<>();
+        this.decrIfPositiveScript.setScriptText("local v = redis.call('get', KEYS[1]); if (not v) or (tonumber(v) <= 0) then return tonumber(v) or 0; else return redis.call('decr', KEYS[1]); end");
+        this.decrIfPositiveScript.setResultType(Long.class);
     }
 
     @Override
@@ -71,6 +81,10 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     public String generateDownloadLink(String achId) {
+        // use Redis INCR for atomic increment, then persist to DB
+        String key = String.format("achievement:%s:downloads", achId);
+        Long newVal = redis.opsForValue().increment(key, 1);
+        // only increment in Redis; periodic flush will persist to DB
         return String.format("/internal/files/%s/download?ts=%d", achId, Instant.now().toEpochMilli());
     }
 
@@ -97,7 +111,10 @@ public class AchievementServiceImpl implements AchievementService {
         AchievementEntity a = optA.get();
         FolderEntity f = optF.get();
         a.getFolders().add(f);
+        // persist relation change immediately, but keep counter in Redis
         achievementRepository.save(a);
+        String key = String.format("achievement:%s:collects", achId);
+        redis.opsForValue().increment(key, 1);
     }
 
     @Override
@@ -108,11 +125,26 @@ public class AchievementServiceImpl implements AchievementService {
         AchievementEntity a = optA.get();
         FolderEntity f = optF.get();
         a.getFolders().remove(f);
+        // persist relation change immediately, but decrement counter in Redis only
         achievementRepository.save(a);
+        String key = String.format("achievement:%s:collects", achId);
+        redis.execute(decrIfPositiveScript, Collections.singletonList(key));
     }
 
     @Override
     public void deleteFolder(String folderId) {
+        // when deleting a folder, decrement collectCount for all achievements inside
+        Optional<FolderEntity> optF = folderRepository.findById(folderId);
+        if (optF.isPresent()) {
+            // use repository method to find related achievements
+            List<AchievementEntity> related = achievementRepository.findByFolders_Id(folderId);
+            for (AchievementEntity a : related) {
+                String key = String.format("achievement:%s:collects", a.getId());
+                redis.execute(decrIfPositiveScript, Collections.singletonList(key));
+                a.getFolders().removeIf(ff -> folderId.equals(ff.getId()));
+                achievementRepository.save(a);
+            }
+        }
         folderRepository.deleteById(folderId);
     }
 

@@ -20,9 +20,9 @@ docker context ls
 2) Run compose on ECS (remote build/pull and start)
 ```powershell
 # 使用名为 `ecs` 的上下文在远程主机上以后台模式启动（构建/拉取镜像并创建容器）
-docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml up -d
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml up -d
 # 列出远程主机上由 compose 启动的容器状态
-docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml ps
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml ps
 # 查看指定容器的详细信息
 docker --context ecs inspect <container>
 # 查看指定容器的日志输出
@@ -32,13 +32,34 @@ docker --context ecs logs <container>
 3) Recompose
 ```powershell
 # 停止远程主机上由 compose 管理的容器（不删除）
-docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml stop
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml stop
 # 强制移除远程主机上由 compose 创建的容器
-docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml rm -f
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml rm -f
 # 列出远程主机上的所有卷并逐个删除（谨慎操作，会丢失持久数据）
 docker --context ecs volume ls -q | ForEach-Object { docker --context ecs volume rm $_ -f }
 # 在本地运行项目的 Makefile（通常用于构建/准备镜像或生成资源）
 make
 # 重新构建镜像并在远程主机上以后台模式启动容器
-docker --context ecs compose --env-file .env -f docker-compose.yml -f docker-compose-db.yml up --build -d
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml up --build -d
+```
+
+4) Recompose a specific service
+
+推荐使用仓库内的 PowerShell 辅助脚本来封装这一步骤：
+
+```powershell
+# 在仓库根目录运行（将 <service> 替换为具体服务名）
+.\scripts\recompose-remote-service-unified.ps1 -Service <service>
+```
+
+脚本会按下列顺序执行（如果你想手动运行，保持原有命令）：
+
+```powershell
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml stop <service>
+
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml rm -f <service>
+
+make SERVICE=<service> build-service
+
+docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml up -d --build <service>
 ```

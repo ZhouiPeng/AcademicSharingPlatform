@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -140,14 +141,6 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(null, "删除成功"));
     }
 
-    // 保留原有简单查阅接口
-    @GetMapping("/achievements/{achId}")
-    @Operation(summary = "查看成就详情（备用路径）")
-    public ResponseEntity<ApiResponse<AchievementDto>> viewDetail(@PathVariable String achId) {
-        AchievementDto d = service.get(achId);
-        return ResponseEntity.ok(ApiResponse.success(d));
-    }
-
     @GetMapping("/{achId}")
     @Operation(summary = "获取成就详情")
     public ResponseEntity<ApiResponse<AchievementDto>> get(@PathVariable String achId) {
@@ -162,6 +155,26 @@ public class AchievementController {
             @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
         java.util.List<AchievementDto> list = service.listByAuthor(authorId);
+        int total = list.size();
+        int from = Math.max(0, (pageNum - 1) * pageSize);
+        int to = Math.min(total, from + pageSize);
+        java.util.List<AchievementDto> items = from < to ? list.subList(from, to) : java.util.List.of();
+        com.academic.achievement.dto.PageResult<AchievementDto> page = new com.academic.achievement.dto.PageResult<>(total, items);
+        return ResponseEntity.ok(ApiResponse.success(page));
+    }
+
+    @GetMapping("/mine")
+    @Operation(summary = "列出当前用户上传的成就（支持 X-User-Id header 或 userId query 参数）")
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> myAchievements(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestParam(value = "userId", required = false) String userIdParam,
+            @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        String userId = (userIdHeader != null && !userIdHeader.isBlank()) ? userIdHeader : userIdParam;
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("missing user id (provide X-User-Id header or userId query param)"));
+        }
+        java.util.List<AchievementDto> list = service.listByAuthor(userId);
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);
         int to = Math.min(total, from + pageSize);
