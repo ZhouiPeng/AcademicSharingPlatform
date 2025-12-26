@@ -1,12 +1,13 @@
 package com.academic.user.dto.response;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class VerificationResponseModel
 {
     private String validateId;
-
-
-    public void setValidateId(String validateId)
-    {
-        this.validateId = validateId;
-    }
 }

@@ -135,8 +135,8 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
-      achievement-service:
-        condition: service_healthy
+      # achievement-service:
+      #   condition: service_healthy
       admin-service:
         condition: service_healthy
     healthcheck:

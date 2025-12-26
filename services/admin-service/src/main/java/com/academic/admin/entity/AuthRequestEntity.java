@@ -19,11 +19,11 @@ public class AuthRequestEntity {
     @Column(length = 36)
     private String id;
 
+    @Column(name = "proceeding_admin_id", length = 128)
+    private String proceedingAdminId;
+
     @Column(name = "applicant_user_id", nullable = false, length = 128)
     private String applicantUserId;
-
-    @Column(name = "assigned_admin_id", nullable = false, length = 128)
-    private String assignedAdminId;
 
     @Column(name = "real_name", nullable = false, length = 256)
     private String realName;

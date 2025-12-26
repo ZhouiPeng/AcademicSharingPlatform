@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface AuthRequestRepository extends JpaRepository<AuthRequestEntity, String> {
-    List<AuthRequestEntity> findByApplicantUserIdOrderByCreatedAtDesc(String applicantUserId);
+    List<AuthRequestEntity> findByProceedingAdminIdOrderByCreatedAtDesc(String proceedingAdminId);
 }
