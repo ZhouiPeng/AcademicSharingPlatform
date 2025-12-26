@@ -9,4 +9,5 @@ import com.academic.achievement.entity.AchievementEntity;
 public interface AchievementRepository extends JpaRepository<AchievementEntity, String> {
     List<AchievementEntity> findByUserId(String userId);
     List<AchievementEntity> findByTitleContainingIgnoreCase(String title);
+    List<AchievementEntity> findByFolders_Id(String folderId);
 }

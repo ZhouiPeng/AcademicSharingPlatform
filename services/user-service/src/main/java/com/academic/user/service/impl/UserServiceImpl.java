@@ -99,7 +99,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String generateVerificationCode(String userId, String mail) throws Exception {
+    public String generateVerificationCode(String userId, String mail)
+    {
         String validateId;
         if (userId != null) {
             User user = userMapper.selectOneByUserId(userId);

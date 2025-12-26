@@ -44,6 +44,16 @@ docker --context ecs compose --env-file .env -p academicsharingplatform -f docke
 ```
 
 4) Recompose a specific service
+
+推荐使用仓库内的 PowerShell 辅助脚本来封装这一步骤：
+
+```powershell
+# 在仓库根目录运行（将 <service> 替换为具体服务名）
+.\scripts\recompose-remote-service-unified.ps1 -Service <service>
+```
+
+脚本会按下列顺序执行（如果你想手动运行，保持原有命令）：
+
 ```powershell
 docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml stop <service>
 
