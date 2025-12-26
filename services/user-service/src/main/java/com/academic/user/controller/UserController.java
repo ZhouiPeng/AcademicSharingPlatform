@@ -452,4 +452,19 @@ public class UserController {
                     ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
     }
+
+    @GetMapping("/users/all")
+    @ResponseBody
+    public ResponseEntity<ApiResponse> getAllUsers() {
+        try {
+            int num = userService.getUsersNum();
+            response.put("userNum", num);
+            return ResponseEntity.ok().body(
+                    ApiResponse.success("获取成功", JSON.toJSONString(response)));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(
+                    ApiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
+        }
+    }
 }

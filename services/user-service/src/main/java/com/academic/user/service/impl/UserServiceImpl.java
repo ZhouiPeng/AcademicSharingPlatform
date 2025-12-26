@@ -242,4 +242,8 @@ public class UserServiceImpl implements UserService {
 
     }
 
+    @Override
+    public int getUsersNum() {
+        return userMapper.count();
+    }
 }
