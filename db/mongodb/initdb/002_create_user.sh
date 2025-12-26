@@ -6,40 +6,33 @@ if [ -z "$MONGO_USER" ]; then
   exit 0
 fi
 
-TARGET_DB=${MONGO_ADMIN_DB_NAME}
-
-echo "Creating MongoDB user '$MONGO_USER' with dbOwner on '$TARGET_DB' (if not exists)"
-
-if command -v mongosh >/dev/null 2>&1; then
-  SHELL_CMD="mongosh --quiet"
-elif command -v mongo >/dev/null 2>&1; then
-  SHELL_CMD="mongo"
-else
-  echo "Neither mongosh nor mongo client found in image; cannot create user" >&2
+if [ -z "$MONGO_ADMIN_DB_NAME" ]; then
+  echo "MONGO_ADMIN_DB_NAME not set"
   exit 1
 fi
 
+SHELL_CMD="mongosh -u \"$MONGO_INITDB_ROOT_USERNAME\" -p \"$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --quiet"
+
 ${SHELL_CMD} <<EOF
-var adminDB = db.getSiblingDB('admin');
 var username = "${MONGO_USER}";
 var password = "${MONGO_PASSWORD}";
-var targetDBName = "${TARGET_DB}";
-if (!adminDB.getUser(username)) {
-  adminDB.createUser({
+var targetDBName = "${MONGO_ADMIN_DB_NAME}";
+var targetDB = db.getSiblingDB(targetDBName);
+
+if (!targetDB.getUser(username)) {
+  targetDB.createUser({
     user: username,
     pwd: password,
     roles: [ { role: 'dbOwner', db: targetDBName } ]
   });
-  print('Created user ' + username + ' with dbOwner on ' + targetDBName);
+  print('Created user ' + username + ' in ' + targetDBName);
 } else {
-  print('MongoDB user ' + username + ' already exists');
+  print('MongoDB user ' + username + ' already exists in ' + targetDBName);
 }
-var targetDB = db.getSiblingDB(targetDBName);
-if (!targetDB.getCollectionNames().includes('_init_coll')) {
+
+if (!targetDB.getCollection('_init_coll').exists()) {
   targetDB.createCollection('_init_coll');
   print('Created placeholder collection in ' + targetDBName);
-} else {
-  print('Target DB ' + targetDBName + ' already has collections');
 }
 EOF
 

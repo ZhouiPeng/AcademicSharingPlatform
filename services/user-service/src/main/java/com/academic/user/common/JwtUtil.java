@@ -1,11 +1,7 @@
 package com.academic.user.common;
 
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.MacAlgorithm;
-
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -13,18 +9,29 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class JwtUtil
-{
-    static public final int expirationTime = 24 * 3600 * 1000;
-    static String secretKey = "r-k.Uv4D@rrX2aYiLOJJC-)!XBD=-#[^i,&vykXQYtU6p.pF4'xQ#GZ-4AS+ri)vhBEAyQFfpZ+";
-    static SecretKey key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
-//    MacAlgorithm alg = Jwts.SIG.HS512;
-//    SecretKey key = alg.key().build();
-    static Map<String, Object> inputClaims = new HashMap<>();
-    //生成密钥
-    public static String generateToken(String userId)
-    {
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import jakarta.annotation.PostConstruct;
+
+@Component
+public class JwtUtil {
+    private static final int expirationTime = 4 * 3600 * 1000;
+    @Value("${JWT_SECRET}")
+    private String jwtSecret;
+    private SecretKey key;
+
+    @PostConstruct
+    public void init() {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET is not configured");
+        }
+        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public String generateToken(String userId, String role) {
+        Map<String, Object> inputClaims = new HashMap<>();
         inputClaims.put("userId", userId);
+        inputClaims.put("role", role);
         String token = Jwts.builder()
                 .claims(inputClaims)
                 .issuedAt(new Date())
@@ -35,14 +42,7 @@ public class JwtUtil
         return token;
     }
 
-    //解析密钥生成id
-    public static String analyseToken(String token)
-    {
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return claims.get("userId").toString();
+    public static String getExpirationTime() {
+        return String.valueOf(expirationTime);
     }
 }

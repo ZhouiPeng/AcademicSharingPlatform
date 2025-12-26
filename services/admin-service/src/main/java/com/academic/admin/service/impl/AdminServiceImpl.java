@@ -13,7 +13,14 @@ import com.academic.admin.repository.ReportRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,47 +49,39 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public String createAuthentication(String userId, AuthRequest req) {
-        String assignedAdmin = assignedAdmin();
+    public Mono<String> createAuthentication(String userId, AuthRequest req) {
         String status = "PENDING";
+        return assignedAdmin()
+                .defaultIfEmpty(null)
+                .flatMap(assignedAdmin -> {
+                    AuthRequestEntity auth = AuthRequestEntity.builder()
+                            .id(UUID.randomUUID().toString())
+                            .applicantUserId(userId)
+                            .assignedAdminId(assignedAdmin)
+                            .realName(req.getRealName())
+                            .idNumber(req.getIdNumber())
+                            .phone(req.getPhone())
+                            .organization(req.getOrganization())
+                            .position(req.getPosition())
+                            .applicationReason(req.getApplicationReason())
+                            .authType(req.getAuthType())
+                            .attachments(req.getAttachments())
+                            .status(status)
+                            .build();
 
-        AuthRequestEntity auth = AuthRequestEntity.builder()
-                .id(UUID.randomUUID().toString())
-                .applicantUserId(userId)
-                .assignedAdminId(assignedAdmin)
-                .realName(req.getRealName())
-                .idNumber(req.getIdNumber())
-                .phone(req.getPhone())
-                .organization(req.getOrganization())
-                .position(req.getPosition())
-                .applicationReason(req.getApplicationReason())
-                .authType(req.getAuthType())
-                .attachments(req.getAttachments())
-                .status(status)
-                .build();
-        authRequestRepository.save(auth);
-
-        SendInfoRequest info = new SendInfoRequest();
-        info.setTargetGroup(assignedAdmin);
-        info.setTitle("门户认证申请通知");
-        info.setContent("用户(" + userId + ")申请门户认证");
-        sendInformation(info);
-
-        return status;
+                    return Mono.fromCallable(() -> authRequestRepository.save(auth))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .flatMap(saved -> {
+                                SendInfoRequest info = new SendInfoRequest();
+                                info.setTargetGroup(assignedAdmin);
+                                info.setTitle("门户认证申请通知");
+                                info.setContent("用户(" + userId + ")申请门户认证");
+                                return sendInformation(info).then(Mono.just(status));
+                            });
+                });
     }
 
-    private String assignedAdmin() {
-        List<Map<String, String>> json = fetchUsersByGroup("ADMIN");
-        List<String> choices = new ArrayList<>();
-        for (Map<String, String> user : json) {
-            choices.add(user.get("userId"));
-        }
-        String assignedAdmin = null;
-        if (!choices.isEmpty()) {
-            assignedAdmin = choices.get(ThreadLocalRandom.current().nextInt(choices.size()));
-        }
-        return assignedAdmin;
-    }
+    
 
     @Override
     public List<AuthDto> listAuthentications(String userId) {
@@ -121,41 +120,44 @@ public class AdminServiceImpl implements AdminService {
         info.setTargetGroup(req.getUserId());
         info.setTitle("门户认证申请处理结果通知");
         info.setContent("申请结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
-        sendInformation(info);
+        sendInformation(info).subscribe();
 
         return req.getStatus();
     }
 
     @Override
-    public String createReport(String reporterId, ReportRequest req) {
-        String assignedAdmin = assignedAdmin();
+    public Mono<String> createReport(String reporterId, ReportRequest req) {
         String status = "PENDING";
+        return assignedAdmin()
+                .defaultIfEmpty(null)
+                .flatMap(assignedAdmin -> {
+                    ReportEntity r = ReportEntity.builder()
+                            .id(UUID.randomUUID().toString())
+                            .reporterId(reporterId)
+                            .type(req.getType())
+                            .targetId(req.getTargetId())
+                            .reason(req.getReason())
+                            .status(status)
+                            .build();
 
-        ReportEntity r = ReportEntity.builder()
-                .id(UUID.randomUUID().toString())
-                .reporterId(reporterId)
-                .type(req.getType())
-                .targetId(req.getTargetId())
-                .reason(req.getReason())
-                .status(status)
-                .build();
-        reportRepository.save(r);
-
-        SendInfoRequest info = new SendInfoRequest();
-        info.setTargetGroup(assignedAdmin);
-        info.setTitle("举报通知");
-        String target;
-        if (req.getTargetId().equals("USER")) {
-            target = "用户";
-        } else if (req.getTargetId().equals("CONTENT")) {
-            target = "内容";
-        } else {
-            target = "未知对象";
-        }
-        info.setContent("用户(" + reporterId + ")举报" + target + "(" + req.getTargetId() + ")");
-        sendInformation(info);
-
-        return status;
+                    return Mono.fromCallable(() -> reportRepository.save(r))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .flatMap(saved -> {
+                                SendInfoRequest info = new SendInfoRequest();
+                                info.setTargetGroup(assignedAdmin);
+                                info.setTitle("举报通知");
+                                String target;
+                                if (req.getTargetId().equals("USER")) {
+                                    target = "用户";
+                                } else if (req.getTargetId().equals("CONTENT")) {
+                                    target = "内容";
+                                } else {
+                                    target = "未知对象";
+                                }
+                                info.setContent("用户(" + reporterId + ")举报" + target + "(" + req.getTargetId() + ")");
+                                return sendInformation(info).then(Mono.just(status));
+                            });
+                });
     }
 
     @Override
@@ -190,104 +192,122 @@ public class AdminServiceImpl implements AdminService {
         info.setTargetGroup(ent.getReporterId());
         info.setTitle("举报处理结果通知");
         info.setContent("举报处理结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
-        sendInformation(info);
+        sendInformation(info).subscribe();
 
         return req.getStatus();
     }
 
     @Override
-    public void sendInformation(SendInfoRequest req) {
+    public Mono<Void> sendInformation(SendInfoRequest req) {
         if (req.getTargetGroup() == null || req.getTargetGroup().isEmpty()) {
-            throw new IllegalArgumentException("Target group cannot be null or empty");
+            return Mono.error(new IllegalArgumentException("Target group cannot be null or empty"));
         }
         String target = req.getTargetGroup();
 
-        // Create message document (single message stored)
-        Message msg = new Message();
-        msg.setUserId(target);
-        msg.setContent(req.getContent());
-        msg.setTitle(req.getTitle());
-        Message saved = messageRepository.save(msg);
+        Mono<Message> savedMono = Mono.fromCallable(() -> {
+            Message msg = new Message();
+            msg.setUserId(target);
+            msg.setContent(req.getContent());
+            msg.setTitle(req.getTitle());
+            return messageRepository.save(msg);
+        }).subscribeOn(Schedulers.boundedElastic());
 
-        List<String> recipients;
+        Mono<List<String>> recipientsMono;
         if ("ALL".equals(target)) {
-            List<Map<String, String>> json = fetchAllUsers();
-            recipients = new ArrayList<>();
-            for (Map<String, String> user : json) {
-                recipients.add(user.get("userId"));
-            }
+            recipientsMono = fetchAllUsers()
+                    .map(list -> list.stream().map(m -> m.get("userId")).collect(Collectors.toList()));
         } else if (target.startsWith("GROUP_")) {
             String groupName = target.substring("GROUP_".length());
-            List<Map<String, String>> json = fetchUsersByGroup(groupName);
-            recipients = new ArrayList<>();
-            for (Map<String, String> user : json) {
-                recipients.add(user.get("userId"));
-            }
+            recipientsMono = fetchUsersByGroup(groupName)
+                    .map(list -> list.stream().map(m -> m.get("userId")).collect(Collectors.toList()));
         } else {
-            Map<String, String> json = fetchUserById(target);
-            recipients = List.of(json.get("userId"));
+            recipientsMono = fetchUserById(target)
+                    .map(m -> List.of(m.get("userId")));
         }
 
-        for (String userId : recipients) {
-            UserMessageState state = UserMessageState.builder()
-                    .id(UUID.randomUUID().toString())
-                    .userId(userId)
-                    .messageId(saved.getId())
-                    .state("UNREAD")
-                    .build();
-            stateRepository.save(state);
-        }
+        return savedMono.flatMapMany(saved ->
+                recipientsMono.flatMapMany(Flux::fromIterable)
+                        .flatMap(userId -> Mono.fromCallable(() -> {
+                            UserMessageState state = UserMessageState.builder()
+                                    .id(UUID.randomUUID().toString())
+                                    .userId(userId)
+                                    .messageId(saved.getId())
+                                    .state("UNREAD")
+                                    .build();
+                            return stateRepository.save(state);
+                        }).subscribeOn(Schedulers.boundedElastic()))
+                        .then()
+        ).then();
     }
 
-    private Map<String, String> fetchUserById(String userId) {
-        Map<String, Object> resp = userWebClient.get()
-                .uri("/users/{userId}", userId)
+    private Mono<Map<String, String>> fetchUserById(String userId) {
+        return userWebClient.get()
+                .uri("/api/users/{userId}", userId)
                 .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), resp -> resp.bodyToMono(String.class).flatMap(body -> Mono.error(new IllegalStateException("user-service error: " + resp.statusCode() + " " + body))))
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                 })
-                .block();
-        if (resp == null) {
-            throw new IllegalStateException("user-service returned null for user " + userId);
-        }
-        Map<String, String> data = (Map<String, String>) resp.get("data");
-        if (data == null) {
-            throw new IllegalStateException("user data missing for " + userId);
-        }
-        return data;
+                .flatMap(resp -> {
+                    Object d = resp.get("data");
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> obj = (Map<String, Object>) d;
+                    Map<String, String> map = new HashMap<>();
+                    for (Map.Entry<String, Object> e : obj.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                    return Mono.just(map);
+                })
+                .timeout(Duration.ofSeconds(10));
     }
 
-    private List<Map<String, String>> fetchAllUsers() {
-        Map<String, Object> resp = userWebClient.get()
-                .uri("/users")
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-                })
-                .block();
-        if (resp == null) {
-            throw new IllegalStateException("user-service returned null");
-        }
-        List<Map<String, String>> data = (List<Map<String, String>>) resp.get("data");
-        if (data == null) {
-            throw new IllegalStateException("user data missing");
-        }
-        return data;
+    private Mono<String> assignedAdmin() {
+        return fetchUsersByGroup("ADMIN")
+                .flatMap(list -> {
+                    if (list == null || list.isEmpty()) return Mono.empty();
+                    List<String> choices = list.stream().map(m -> m.get("userId")).collect(Collectors.toList());
+                    String selected = choices.get(ThreadLocalRandom.current().nextInt(choices.size()));
+                    return Mono.just(selected);
+                });
     }
 
-    private List<Map<String, String>> fetchUsersByGroup(String group) {
-        Map<String, Object> resp = userWebClient.get()
-                .uri(uriBuilder -> uriBuilder.path("/groups/{group}/users").build(group))
+    private Mono<List<Map<String, String>>> fetchAllUsers() {
+        return userWebClient.get()
+                .uri("/api/users")
                 .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), resp -> resp.bodyToMono(String.class).flatMap(body -> Mono.error(new IllegalStateException("user-service error: " + resp.statusCode() + " " + body))))
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                 })
-                .block();
-        if (resp == null) {
-            throw new IllegalStateException("user-service returned null for group");
-        }
-        List<Map<String, String>> data = (List<Map<String, String>>) resp.get("data");
-        if (data == null) {
-            throw new IllegalStateException("user data missing for group");
-        }
-        return data;
+                .flatMap(resp -> {
+                    Object d = resp.get("data");
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> objList = (List<Map<String, Object>>) d;
+                    List<Map<String, String>> converted = objList.stream().map(m -> {
+                        Map<String, String> map = new HashMap<>();
+                        for (Map.Entry<String, Object> e : m.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                        return map;
+                    }).collect(Collectors.toList());
+                    return Mono.just(converted);
+                })
+                .timeout(Duration.ofSeconds(10));
+    }
+
+    private Mono<List<Map<String, String>>> fetchUsersByGroup(String group) {
+        return userWebClient.get()
+                .uri("/api/users/role/{role}", group)
+                .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), resp -> resp.bodyToMono(String.class).flatMap(body -> Mono.error(new IllegalStateException("user-service error: " + resp.statusCode() + " " + body))))
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
+                .flatMap(resp -> {
+                    Object d = resp.get("data");
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> objList = (List<Map<String, Object>>) d;
+                    List<Map<String, String>> converted = objList.stream().map(m -> {
+                        Map<String, String> map = new HashMap<>();
+                        for (Map.Entry<String, Object> e : m.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                        return map;
+                    }).collect(Collectors.toList());
+                    return Mono.just(converted);
+                })
+                .timeout(Duration.ofSeconds(10));
     }
 
     @Override
@@ -302,7 +322,22 @@ public class AdminServiceImpl implements AdminService {
         if (messageRepository.existsById(id)) {
             messageRepository.deleteById(id);
         }
-        stateRepository.deleteByMessageId(id);
+        List<UserMessageState> states = stateRepository.findByMessageId(id);
+        if (states != null && !states.isEmpty()) {
+            for (UserMessageState s : states) {
+                s.setState("DELETED");
+            }
+            stateRepository.saveAll(states);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deletePersonalInformation(String userId, String id) {
+        UserMessageState s = stateRepository.findByUserIdAndMessageId(userId, id);
+        if (s != null) {
+            stateRepository.delete(s);
+        }
     }
 
     @Override
@@ -315,7 +350,8 @@ public class AdminServiceImpl implements AdminService {
             dto.setId(ent.getId());
             dto.setTitle(ent.getTitle());
             dto.setContent(ent.getContent());
-            dto.setCreatedAt(ent.getCreatedAt().toString());
+            dto.setState(s.getState());
+            dto.setUpdatedAt(ent.getCreatedAt().toString());
             res.add(dto);
         }
         return res;

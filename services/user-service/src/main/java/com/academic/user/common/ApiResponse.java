@@ -1,38 +1,32 @@
 package com.academic.user.common;
 
-import com.alibaba.fastjson2.JSON;
-
 import java.time.Instant;
 
-public class ApiResponse {
+public class ApiResponse<T> {
     private int code; // 1 成功，0 或其他 失败
     private String msg;
-    private String data;
+    private T data;
     private long timestamp;
 
     public ApiResponse() {}
 
-    public ApiResponse(int code, String msg, String data) {
+    public ApiResponse(int code, String msg, T data) {
         this.code = code;
         this.msg = msg;
         this.data = data;
         this.timestamp = Instant.now().toEpochMilli();
     }
 
-//    public static  String success(String data) {
-//        return new ApiResponse(1, "操作成功", data).toString();
-//    }
-
-    public static  ApiResponse success(String msg, String data) {
-        return new ApiResponse(1, msg, data);
+    public   ApiResponse<T> success(String msg, T data) {
+        return new ApiResponse<> (1, msg, data);
     }
 
-    public static  ApiResponse fail(String msg) {
-        return new ApiResponse(0, msg, "");
+    public   ApiResponse<T> fail(String msg) {
+        return new ApiResponse<>(0, msg, null);
     }
-    public static  ApiResponse fail(int code, String msg)
+    public   ApiResponse<T> fail(int code, String msg)
     {
-        return new ApiResponse(code, msg, "");
+        return new ApiResponse<>(code, msg, null);
     }
 
     // getters / setters
@@ -40,14 +34,8 @@ public class ApiResponse {
     public void setCode(int code) { this.code = code; }
     public String getMsg() { return msg; }
     public void setMsg(String msg) { this.msg = msg; }
-    public String getData() { return data; }
-    public void setData(String data) { this.data = data; }
+    public T getData() { return data; }
+    public void setData(T data) { this.data = data; }
     public long getTimestamp() { return timestamp; }
     public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
-
-    @Override
-    public String toString()
-    {
-        return JSON.toJSONString(this);
-    }
 }

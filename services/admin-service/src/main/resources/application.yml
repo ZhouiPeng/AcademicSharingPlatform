@@ -3,7 +3,9 @@ spring:
     name: admin-service
   data:
     mongodb:
-      uri: mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_ADMIN_DB_NAME}
+      host: ${MONGO_HOST}
+      port: ${MONGO_PORT}
+      database: ${MONGO_ADMIN_DB_NAME}
       username: ${MONGO_USER}
       password: ${MONGO_PASSWORD}
   datasource:

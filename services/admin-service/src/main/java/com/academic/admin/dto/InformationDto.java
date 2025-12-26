@@ -11,5 +11,6 @@ public class InformationDto {
     private String id;
     private String title;
     private String content;
-    private String createdAt;
+    private String state;
+    private String updatedAt;
 }
