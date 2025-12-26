@@ -2,7 +2,6 @@ package com.academic.user.controller;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.springframework.mail.MailException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.academic.user.common.ApiResponse;
 import com.academic.user.common.JwtUtil;
 import com.academic.user.common.Secure;
@@ -24,7 +22,6 @@ import com.academic.user.dto.User;
 import com.academic.user.service.UserService;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -35,11 +32,13 @@ import io.jsonwebtoken.UnsupportedJwtException;
 public class UserController {
 
     private final UserService userService;
+    private final JwtUtil jwtUtil;
 
     Map<String, Object> data = new HashMap<>();
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, JwtUtil jwtUtil) {
         this.userService = userService;
+        this.jwtUtil = jwtUtil;
     }
 
     //注册
@@ -71,10 +70,10 @@ public class UserController {
         try {
             requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
             User user = userService.login(requestUser);
-            String token = JwtUtil.generateToken(user.getUserId());
+            String token = jwtUtil.generateToken(user.getUserId(), user.getRole().toString());
 
             data.put("token", token);
-            data.put("expiresIn", JwtUtil.expirationTime);
+            data.put("expiresIn", jwtUtil.getExpirationTime());
             data.put("user", user);
             return ApiResponse.success("登录成功", JSON.toJSONString(data));
         } catch (ServiceError e) {
@@ -88,10 +87,9 @@ public class UserController {
     //获取当前用户信息
     @GetMapping("/current")
     @ResponseBody
-    public String getCurrent(@RequestHeader(name = "Authorization") String token) {
+    public String getCurrent(@RequestHeader(name = "X-User-Id", required = false) String userIdHeader) {
         try {
-            String userId = JwtUtil.analyseToken(token);
-            User user = userService.getCurrent(userId);
+            User user = userService.getCurrent(userIdHeader);
             return ApiResponse.success("获取成功", JSON.toJSONString(user));
         } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
@@ -131,11 +129,11 @@ public class UserController {
     //修改当前用户信息
     @PutMapping("/current")
     @ResponseBody
-    public String updateCurrent(@RequestHeader(name = "Authorization") String token,
+    public String updateCurrent(
+            @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
             @RequestBody User user) {
         try {
-            String userId = JwtUtil.analyseToken(token);
-            user.setUserId(userId);
+            user.setUserId(userIdHeader);
             userService.updateCurrent(user);
             return ApiResponse.success("修改成功", null);
         } catch (ExpiredJwtException e) {
@@ -159,12 +157,11 @@ public class UserController {
     //发送验证码
     @PostMapping("/verification/send")
     @ResponseBody
-    public String registerValidation(@RequestHeader(name = "Authorization", required = false) String token,
+    public String registerValidation(@RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
                                      @RequestBody(required = false) Map<String, String> requestBody) {
         try {
-            if (token != null && !token.isEmpty()) {
-                String userId = JwtUtil.analyseToken(token);
-                String validateId = userService.generateVerificationCode(userId, null);
+            if (userIdHeader != null && !userIdHeader.isEmpty()) {
+                String validateId = userService.generateVerificationCode(userIdHeader, null);
                 data.put("validateId", validateId);
                 return ApiResponse.success("验证码已发送，请检查邮箱", JSON.toJSONString(data));
             }
@@ -188,12 +185,11 @@ public class UserController {
     //重置密码验证验证码
     @PostMapping("/password/reset/{validateId}")
     @ResponseBody
-    public String resetPassword(@RequestHeader(name = "Authorization") String token,
+    public String resetPassword(@RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
             @PathVariable("validateId") String validateId, @RequestBody Map<String, String> requestBody) {
         try {
-            String userId = JwtUtil.analyseToken(token);
             userService.validateVerificationCode(validateId, requestBody.get("code"));
-            userService.resetPassword(userId, requestBody.get("password"));
+            userService.resetPassword(userIdHeader, requestBody.get("password"));
             return ApiResponse.success("修改成功", null);
         } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
@@ -215,11 +211,10 @@ public class UserController {
     //关注用户
     @PostMapping("/follow/{userId}")
     @ResponseBody
-    public String follow(@RequestHeader(name = "Authorization") String token,
+    public String follow(@RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
             @PathVariable("userId") String targetId) {
         try {
-            String userId = JwtUtil.analyseToken(token);
-            userService.follow(targetId, userId);
+            userService.follow(targetId, userIdHeader);
             return ApiResponse.success("关注成功", null);
         } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
@@ -242,11 +237,10 @@ public class UserController {
     //取消关注
     @DeleteMapping("/follow/{userId}")
     @ResponseBody
-    public String unfollow(@RequestHeader(name = "Authorization") String token,
+    public String unfollow(@RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
             @PathVariable("userId") String targetId) {
         try {
-            String userId = JwtUtil.analyseToken(token);
-            userService.follow(targetId, userId);
+            userService.unfollow(targetId, userIdHeader);
             return ApiResponse.success("取消成功", null);
         } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
@@ -269,12 +263,11 @@ public class UserController {
     //查看关注用户
     @GetMapping("/follows")
     @ResponseBody
-    public String getFollows(@RequestHeader(name = "Authorization") String token,
+    public String getFollows(@RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
-            String userId = JwtUtil.analyseToken(token);
-            IPage<User> userPage = userService.getFollows(userId, pageNum, pageSize);
+            IPage<User> userPage = userService.getFollows(userIdHeader, pageNum, pageSize);
             return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
         } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
@@ -295,12 +288,11 @@ public class UserController {
     //查看粉丝
     @GetMapping("/fans")
     @ResponseBody
-    public String getFans(@RequestHeader(name = "Authorization") String token,
+    public String getFans(@RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
-            String userId = JwtUtil.analyseToken(token);
-            IPage<User> userPage = userService.getFans(userId, pageNum, pageSize);
+            IPage<User> userPage = userService.getFans(userIdHeader, pageNum, pageSize);
             return ApiResponse.success("获取成功", JSON.toJSONString(userPage));
         } catch (ExpiredJwtException e) {
             return ApiResponse.fail(-1, "登陆状态已过期");
@@ -322,8 +314,8 @@ public class UserController {
     @GetMapping("")
     @ResponseBody
     public String getUsers(
-                             @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
-                             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
+            @RequestParam(value = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize) {
         try {
             IPage<User> userPage = userService.getUsers(pageNum, pageSize);
             return ApiResponse.success("获取成功", JSON.toJSONString(userPage));

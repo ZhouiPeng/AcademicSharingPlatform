@@ -2,6 +2,9 @@ package com.academic.file.controller;
 
 import com.academic.file.dto.*;
 import com.academic.file.service.FileService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @Validated
 @RestController
 @RequestMapping("/api/files")
+@Tag(name = "File Service", description = "文件相关接口")
 public class FileController {
 
 	private final FileService service;
@@ -22,6 +26,7 @@ public class FileController {
 	}
 
 	@PostMapping(value = "/upload/{uploaderId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "上传文件")
 	public ResponseEntity<ApiResponse<FileDto>> upload(
 			@PathVariable @NotBlank String uploaderId,
 			@ModelAttribute @Valid FileRequest req) {
@@ -30,12 +35,14 @@ public class FileController {
 	}
 
 	@DeleteMapping("/delete/{fileId}")
+	@Operation(summary = "删除文件")
 	public ResponseEntity<ApiResponse<Void>> delete(@PathVariable @NotBlank String fileId) {
 		service.deleteFile(fileId);
 		return ResponseEntity.ok(ApiResponse.success(null));
 	}
 
 	@PutMapping("/modify/{uploaderId}/{fileId}")
+	@Operation(summary = "修改文件信息")
 	public ResponseEntity<ApiResponse<FileDto>> modify(
 		@PathVariable @NotBlank String uploaderId,
 		@PathVariable @NotBlank String fileId,
@@ -45,12 +52,14 @@ public class FileController {
 	}
 
 	@GetMapping("/check/{fileId}")
+	@Operation(summary = "查询文件信息")
 	public ResponseEntity<ApiResponse<FileDto>> check(@PathVariable @NotBlank String fileId) {
 		ApiResponse<FileDto> resp = ApiResponse.success(service.checkFile(fileId));
 		return ResponseEntity.ok(resp);
 	}
 
 	@GetMapping("/download/{fileId}")
+	@Operation(summary = "下载文件")
 	public ResponseEntity<ApiResponse<Void>> download(
 		@PathVariable @NotBlank String fileId, 
 		HttpServletResponse response) {

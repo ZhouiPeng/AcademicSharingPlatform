@@ -47,6 +47,7 @@ docker --context ecs compose --env-file .env -p academicsharingplatform -f docke
 ```powershell
 docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml stop <service>
 docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml rm -f <service>
+docker --context ecs volume rm <volume> -f
 make SERVICE=<service> build-service
 docker --context ecs compose --env-file .env -p academicsharingplatform -f docker-compose.yml -f docker-compose-db.yml up -d --build <service>
 ```
