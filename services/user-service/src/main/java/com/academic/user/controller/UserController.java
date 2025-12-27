@@ -1,6 +1,8 @@
 package com.academic.user.controller;
 
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.academic.user.common.*;
 import com.academic.user.dto.request.*;
 import com.academic.user.dto.response.LoginResponseModel;
@@ -26,6 +28,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     private final UserService userService;
     private final JwtUtil jwtUtil;
@@ -59,7 +63,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ResponseEntity.badRequest().body(apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("注册失败", e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
@@ -83,7 +87,7 @@ public class UserController {
         } catch (ServiceError e) {
             return ResponseEntity.badRequest().body(apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("登录失败", e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
@@ -103,7 +107,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("获取当前用户信息失败", e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -123,7 +127,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("获取用户信息失败, userId: {}", userId, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
@@ -149,7 +153,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("修改用户信息失败, userId: {}", userIdHeader, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -189,11 +193,12 @@ public class UserController {
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch(MailException e)
         {
+            logger.error("发送验证码邮件失败", e);
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, e.getMessage()));
         }
         catch (Exception e) {
-            e.printStackTrace();
+            logger.error("发送验证码失败", e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙，请稍后再试"));
         }
@@ -215,7 +220,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("重置密码失败, userId: {}", userIdHeader, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -236,7 +241,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("关注用户失败, userId: {}, targetId: {}", userIdHeader, targetId, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -256,7 +261,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("取消关注失败, userId: {}, targetId: {}", userIdHeader, targetId, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -275,7 +280,7 @@ public class UserController {
             return ResponseEntity.ok().body(
                     apiResponse.success("获取成功", userPage));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("获取关注列表失败, userId: {}", userIdHeader, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -294,7 +299,7 @@ public class UserController {
             return ResponseEntity.ok().body(
                     apiResponse.success("获取成功", userPage));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("获取粉丝列表失败, userId: {}", userIdHeader, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -312,7 +317,7 @@ public class UserController {
             return ResponseEntity.ok().body(
                     apiResponse.success("获取成功", userPage));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("获取用户列表失败", e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -333,7 +338,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(
                     apiResponse.fail(e.getCode(), e.getMsg()));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("根据角色获取用户列表失败, role: {}", role, e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
@@ -349,7 +354,7 @@ public class UserController {
             return ResponseEntity.ok().body(
                     apiResponse.success("获取成功", totalResponseModel));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("获取用户总数失败", e);
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }
