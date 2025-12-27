@@ -1,4 +1,4 @@
-package com.academic.user.dto;
+package com.academic.user.dto.service;
 
 import java.time.LocalDateTime;
 
@@ -45,12 +45,19 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
+    public User(String username, String passwordHash)
+    {
+        this.username = username;
+        this.passwordHash = passwordHash;
+    }
+
     public User(String username, String email, String passwordHash, String displayName) {
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
         this.displayName = displayName;
     }
+
 
     public String getUserId() {
         return userId;

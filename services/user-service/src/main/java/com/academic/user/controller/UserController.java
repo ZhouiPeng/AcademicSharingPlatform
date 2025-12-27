@@ -1,9 +1,8 @@
 package com.academic.user.controller;
 
-import java.util.HashMap;
 import java.util.Map;
 import com.academic.user.common.*;
-import com.academic.user.dto.request.RegisterRequestModel;
+import com.academic.user.dto.request.*;
 import com.academic.user.dto.response.LoginResponseModel;
 import com.academic.user.dto.response.TotalResponseModel;
 import com.academic.user.dto.response.VerificationResponseModel;
@@ -20,9 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
-import com.academic.user.dto.User;
+import com.academic.user.dto.service.User;
 import com.academic.user.service.UserService;
-import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
 @RestController
@@ -31,8 +29,6 @@ public class UserController {
 
     private final UserService userService;
     private final JwtUtil jwtUtil;
-
-    Map<String, Object> response = new HashMap<>();
 
     public UserController(UserService userService, JwtUtil jwtUtil) {
         this.userService = userService;
@@ -49,7 +45,11 @@ public class UserController {
         //生成User
         try {
             String verificationCode = registerRequestModel.getVerificationCode();
-            User requestUser = registerRequestModel.getUser();
+            User requestUser = new User(registerRequestModel.getUsername(),
+                    registerRequestModel.getEmail(),
+                    Secure.sha256(registerRequestModel.getPassword()),
+                    registerRequestModel.getDisplayName());
+
             userService.validateVerificationCode(validateId, verificationCode);
             requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
             String userId = userService.registerNormal(requestUser);
@@ -68,10 +68,12 @@ public class UserController {
     //登录
     @PostMapping("/login")
     @ResponseBody
-    public ResponseEntity<ApiResponse<LoginResponseModel>> login(@RequestBody User requestUser) {
+    public ResponseEntity<ApiResponse<LoginResponseModel>> login(
+            @RequestBody LoginRequestModel loginRequestModel) {
         ApiResponse<LoginResponseModel> apiResponse = new ApiResponse<>();
         try {
-            requestUser.setPasswordHash(Secure.sha256(requestUser.getPasswordHash()));
+            User requestUser = new User(loginRequestModel.getUsername(),
+                    Secure.sha256(loginRequestModel.getPassword()));
             User user = userService.login(requestUser);
             String token = jwtUtil.generateToken(user.getUserId(), user.getRole().toString());
             LoginResponseModel loginResponseModel =
@@ -132,9 +134,13 @@ public class UserController {
     @ResponseBody
     public ResponseEntity<ApiResponse<User>> updateCurrent(
             @RequestHeader(name = "X-User-Id") String userIdHeader,
-            @RequestBody User user) {
+            @RequestBody UpdateRequestModel updateRequestModel) {
         ApiResponse<User> apiResponse = new ApiResponse<>();
         try {
+            User user = new User();
+            user.setAvatarUrl(updateRequestModel.getDisplayName());
+            user.setDisplayName(updateRequestModel.getDisplayName());
+            user.setEmail(updateRequestModel.getEmail());
             user.setUserId(userIdHeader);
             userService.updateCurrent(user);
             return ResponseEntity.ok().body(
@@ -154,7 +160,7 @@ public class UserController {
     @ResponseBody
     public ResponseEntity<ApiResponse<VerificationResponseModel>> registerValidation(
             @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
-            @RequestBody(required = false) Map<String, String> requestBody) {
+            @RequestBody(required = false) VerificationRequestModel verificationRequestModel) {
         ApiResponse<VerificationResponseModel> apiResponse = new ApiResponse<>();
         VerificationResponseModel verificationResponseModel = new VerificationResponseModel();
         try {
@@ -164,15 +170,17 @@ public class UserController {
                 return ResponseEntity.ok().body(
                         apiResponse.success("验证码已发送，请检查邮箱", verificationResponseModel));
             }
-            else if(requestBody == null) {
+            else if(verificationRequestModel == null) {
                 return ResponseEntity.badRequest().body(
                         apiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "请求体不能为空"));
             }
-            if (requestBody.get("email") == null || requestBody.get("email").isEmpty()) {
+            if (verificationRequestModel.getEmail() == null ||
+                    verificationRequestModel.getEmail().isEmpty()) {
                 return ResponseEntity.badRequest().body(
                         apiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "邮箱不能为空"));
             }
-            String validateId = userService.generateVerificationCode(null, requestBody.get("email"));
+            String validateId = userService.generateVerificationCode(null,
+                    verificationRequestModel.getEmail());
             verificationResponseModel.setValidateId(validateId);
             return ResponseEntity.ok().body(
                     apiResponse.success("验证码已发送，请检查邮箱", verificationResponseModel));
@@ -196,11 +204,11 @@ public class UserController {
     @ResponseBody
     public ResponseEntity<ApiResponse<Object>> resetPassword(
             @RequestHeader(name = "X-User-Id") String userIdHeader,
-            @PathVariable String validateId, @RequestBody Map<String, String> requestBody) {
+            @PathVariable String validateId, @RequestBody ResetRequestModel resetRequestModel) {
         ApiResponse<Object> apiResponse = new ApiResponse<>();
         try {
-            userService.validateVerificationCode(validateId, requestBody.get("code"));
-            userService.resetPassword(userIdHeader, requestBody.get("password"));
+            userService.validateVerificationCode(validateId, resetRequestModel.getCode());
+            userService.resetPassword(userIdHeader, Secure.sha256(resetRequestModel.getPassword()));
             return ResponseEntity.ok().body(
                     apiResponse.success("修改成功", null));
         } catch (ServiceError e) {

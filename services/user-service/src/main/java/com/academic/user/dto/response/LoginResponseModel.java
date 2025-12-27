@@ -1,6 +1,6 @@
 package com.academic.user.dto.response;
 
-import com.academic.user.dto.User;
+import com.academic.user.dto.service.User;
 
 public class LoginResponseModel
 {
