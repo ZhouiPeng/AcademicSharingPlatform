@@ -19,6 +19,9 @@ public class ReportEntity {
     @Column(length = 36)
     private String id;
 
+    @Column(name = "proceeding_admin_id", length = 128)
+    private String proceedingAdminId;
+
     @Column(name = "reporter_id", nullable = false, length = 128)
     private String reporterId;
 

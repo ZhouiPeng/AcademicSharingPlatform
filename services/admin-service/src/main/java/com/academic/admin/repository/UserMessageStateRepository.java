@@ -9,6 +9,5 @@ import java.util.List;
 public interface UserMessageStateRepository extends JpaRepository<UserMessageState, String> {
 	List<UserMessageState> findByUserIdOrderByUpdatedAtDesc(String userId);
 	List<UserMessageState> findByMessageId(String messageId);
-	void deleteByMessageId(String messageId);
 	UserMessageState findByUserIdAndMessageId(String userId, String messageId);
 }

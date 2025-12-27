@@ -7,5 +7,5 @@ import java.util.List;
 
 @Repository 
 public interface ReportRepository extends JpaRepository<ReportEntity, String> {
-	List<ReportEntity> findByReporterIdOrderByCreatedAtDesc(String reporterId);
+	List<ReportEntity> findByProceedingAdminIdOrderByCreatedAtDesc(String proceedingAdminId);
 }

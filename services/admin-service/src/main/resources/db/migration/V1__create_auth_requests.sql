@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS auth_requests (
   id VARCHAR(36) NOT NULL PRIMARY KEY,
+  proceeding_admin_id VARCHAR(128),
   applicant_user_id VARCHAR(128) NOT NULL,
-  assigned_admin_id VARCHAR(128) NOT NULL,
   real_name VARCHAR(256) NOT NULL,
   id_number VARCHAR(128) NOT NULL,
   phone VARCHAR(64) NOT NULL,
@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS auth_requests (
 
 CREATE TABLE IF NOT EXISTS reports (
   id VARCHAR(36) NOT NULL PRIMARY KEY,
+  proceeding_admin_id VARCHAR(128),
   reporter_id VARCHAR(128) NOT NULL,
   type VARCHAR(32) NOT NULL,
   target_id VARCHAR(128) NOT NULL,

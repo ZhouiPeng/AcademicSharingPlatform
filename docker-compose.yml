@@ -2,6 +2,7 @@ services:
   user-service:
     build: ./services/user-service
     environment:
+      - JWT_SECRET=${JWT_SECRET}
       - MYSQL_HOST=${MYSQL_HOST}
       - MYSQL_PORT=${MYSQL_PORT}
       - MYSQL_USER=${MYSQL_USER}
@@ -121,6 +122,8 @@ services:
 
   gateway-service:
     build: ./services/gateway-service
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "8080:8080"
     depends_on:
@@ -132,8 +135,8 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
-      achievement-service:
-        condition: service_healthy
+      # achievement-service:
+      #   condition: service_healthy
       admin-service:
         condition: service_healthy
     healthcheck:
