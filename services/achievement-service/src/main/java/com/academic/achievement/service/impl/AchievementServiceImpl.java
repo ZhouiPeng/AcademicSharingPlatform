@@ -41,6 +41,30 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     public String upload(AchievementDto dto) {
+        // duplicate detection: same title AND (same userId OR overlapping authors)
+        String title = dto.getTitle() == null ? "" : dto.getTitle().trim();
+        if (!title.isEmpty()) {
+            java.util.List<com.academic.achievement.entity.AchievementEntity> candidates = achievementRepository.findByTitleContainingIgnoreCase(title);
+            for (com.academic.achievement.entity.AchievementEntity cand : candidates) {
+                if (cand.getTitle() == null) continue;
+                if (!cand.getTitle().equalsIgnoreCase(title)) continue;
+                // check same userId
+                if (dto.getUserId() != null && dto.getUserId().equals(cand.getAuthorId())) {
+                    throw new com.academic.achievement.service.DuplicateAchievementException("检测到重复：相同标题且上传用户相同");
+                }
+                // check overlapping authors
+                if (dto.getAuthors() != null && !dto.getAuthors().isEmpty() && cand.getAuthors() != null && !cand.getAuthors().isEmpty()) {
+                    java.util.Set<String> existing = java.util.Arrays.stream(cand.getAuthors().split(","))
+                            .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
+                    for (String a : dto.getAuthors()) {
+                        if (existing.contains(a)) {
+                            throw new com.academic.achievement.service.DuplicateAchievementException("检测到重复：相同标题且作者重合");
+                        }
+                    }
+                }
+            }
+        }
+
         AchievementEntity e = toEntity(dto);
         if (e.getId() == null || e.getId().isEmpty()) e.setId("ach-" + System.currentTimeMillis());
         if (e.getCreatedAt() == null) e.setCreatedAt(System.currentTimeMillis());

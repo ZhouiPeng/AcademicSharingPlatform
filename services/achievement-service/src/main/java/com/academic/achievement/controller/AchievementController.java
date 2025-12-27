@@ -46,28 +46,32 @@ public class AchievementController {
     @PostMapping
     @Operation(summary = "上传成就")
     public ResponseEntity<ApiResponse<Object>> upload(@RequestBody AchievementDto dto) {
-        String id = service.upload(dto);
-        java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);
-        // report author relationship to analytics-service asynchronously (fire-and-forget)
         try {
-            String userId = dto.getUserId();
-            String authors = "";
-            if (dto.getAuthors() != null && !dto.getAuthors().isEmpty()) {
-                authors = dto.getAuthors().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","));
+            String id = service.upload(dto);
+            java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);
+            // report author relationship to analytics-service asynchronously (fire-and-forget)
+            try {
+                String userId = dto.getUserId();
+                String authors = "";
+                if (dto.getAuthors() != null && !dto.getAuthors().isEmpty()) {
+                    authors = dto.getAuthors().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","));
+                }
+                if (userId != null && !userId.isBlank() && (authors != null && !authors.isBlank())) {
+                    java.util.Map<String, String> body = java.util.Map.of("userId", userId, "authors", authors);
+                    analyticsClient.post()
+                            .uri("/api/analysis/author-relationship")
+                            .bodyValue(body)
+                            .retrieve()
+                            .toBodilessEntity()
+                            .subscribe();
+                }
+            } catch (Exception ignore) {
             }
-            if (userId != null && !userId.isBlank() && (authors != null && !authors.isBlank())) {
-                java.util.Map<String, String> body = java.util.Map.of("userId", userId, "authors", authors);
-                analyticsClient.post()
-                        .uri("/api/analysis/author-relationship")
-                        .bodyValue(body)
-                        .retrieve()
-                        .toBodilessEntity()
-                        .subscribe();
-            }
-        } catch (Exception ignore) {
-        }
 
-        return ResponseEntity.status(201).body(ApiResponse.success(data, "上传成功"));
+            return ResponseEntity.status(201).body(ApiResponse.success(data, "上传成功"));
+        } catch (com.academic.achievement.service.DuplicateAchievementException ex) {
+            return ResponseEntity.status(409).body(ApiResponse.error(ex.getMessage()));
+        }
     }
 
     @PutMapping("/{achId}")
