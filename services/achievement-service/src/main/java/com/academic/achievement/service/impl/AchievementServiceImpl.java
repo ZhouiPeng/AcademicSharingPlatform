@@ -30,6 +30,9 @@ public class AchievementServiceImpl implements AchievementService {
 
     private final DefaultRedisScript<Long> decrIfPositiveScript;
 
+    // Defensive limit to avoid MySQL Data truncation when schema uses VARCHAR(255)
+    private static final int AUTHORS_MAX_LEN = 255;
+
     public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, StringRedisTemplate redis) {
         this.achievementRepository = achievementRepository;
         this.folderRepository = folderRepository;
@@ -42,12 +45,15 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     public String upload(AchievementDto dto) {
         AchievementEntity e = toEntity(dto);
-        if (e.getId() == null || e.getId().isEmpty()) e.setId("ach-" + System.currentTimeMillis());
-        if (e.getCreatedAt() == null) e.setCreatedAt(System.currentTimeMillis());
+        if (e.getId() == null || e.getId().isEmpty()) {
+            e.setId("ach-" + System.currentTimeMillis());
+        }
+        if (e.getCreatedAt() == null) {
+            e.setCreatedAt(System.currentTimeMillis());
+        }
         achievementRepository.save(e);
         return e.getId();
     }
-
 
     @Override
     public AchievementDto get(String achId) {
@@ -58,14 +64,31 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     public void update(String achId, AchievementDto dto) {
         Optional<AchievementEntity> opt = achievementRepository.findById(achId);
-        if (opt.isEmpty()) return;
+        if (opt.isEmpty()) {
+            return;
+        }
         AchievementEntity e = opt.get();
-        if (dto.getTitle() != null) e.setTitle(dto.getTitle());
-        if (dto.getUserId() != null) e.setAuthorId(dto.getUserId());
-        if (dto.getFileId() != null) e.setFileId(dto.getFileId());
-        if (dto.getAuthors() != null) e.setAuthors(String.join(",", dto.getAuthors()));
-        if (dto.getType() != null) e.setType(dto.getType());
-        if (dto.getAbstractText() != null) e.setAbstractText(dto.getAbstractText());
+        if (dto.getTitle() != null) {
+            e.setTitle(dto.getTitle());
+        }
+        if (dto.getUserId() != null) {
+            e.setAuthorId(dto.getUserId());
+        }
+        if (dto.getFileId() != null) {
+            e.setFileId(dto.getFileId());
+        }
+        if (dto.getAuthors() != null) {
+            e.setAuthors(limitLen(String.join(",", dto.getAuthors()), AUTHORS_MAX_LEN));
+        }
+        if (dto.getCategories() != null) {
+            e.setCategories(String.join(",", dto.getCategories()));
+        }
+        if (dto.getType() != null) {
+            e.setType(dto.getType());
+        }
+        if (dto.getAbstractText() != null) {
+            e.setAbstractText(dto.getAbstractText());
+        }
         achievementRepository.save(e);
     }
 
@@ -91,8 +114,11 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     public CollectionFolderDto createFolder(CollectionFolderDto dto) {
         FolderEntity f = new FolderEntity();
-        if (dto.getId() == null || dto.getId().isEmpty()) f.setId("folder-" + System.currentTimeMillis());
-        else f.setId(dto.getId());
+        if (dto.getId() == null || dto.getId().isEmpty()) {
+            f.setId("folder-" + System.currentTimeMillis());
+        } else {
+            f.setId(dto.getId());
+        }
         f.setName(dto.getName());
         f.setDescription(dto.getDescription());
         FolderEntity saved = folderRepository.save(f);
@@ -107,7 +133,9 @@ public class AchievementServiceImpl implements AchievementService {
     public void collect(String achId, String folderId) {
         Optional<AchievementEntity> optA = achievementRepository.findById(achId);
         Optional<FolderEntity> optF = folderRepository.findById(folderId);
-        if (optA.isEmpty() || optF.isEmpty()) return;
+        if (optA.isEmpty() || optF.isEmpty()) {
+            return;
+        }
         AchievementEntity a = optA.get();
         FolderEntity f = optF.get();
         a.getFolders().add(f);
@@ -121,7 +149,9 @@ public class AchievementServiceImpl implements AchievementService {
     public void uncollect(String achId, String folderId) {
         Optional<AchievementEntity> optA = achievementRepository.findById(achId);
         Optional<FolderEntity> optF = folderRepository.findById(folderId);
-        if (optA.isEmpty() || optF.isEmpty()) return;
+        if (optA.isEmpty() || optF.isEmpty()) {
+            return;
+        }
         AchievementEntity a = optA.get();
         FolderEntity f = optF.get();
         a.getFolders().remove(f);
@@ -167,11 +197,11 @@ public class AchievementServiceImpl implements AchievementService {
         }
         final String keywordLower = keyword.toLowerCase();
         return achievementRepository.findAll().stream()
-            .filter(e -> containsIgnoreCase(e.getTitle(), keywordLower)
+                .filter(e -> containsIgnoreCase(e.getTitle(), keywordLower)
                 || containsIgnoreCase(e.getAuthors(), keywordLower)
                 || containsIgnoreCase(e.getAbstractText(), keywordLower))
-            .map(this::toDto)
-            .collect(Collectors.toList());
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -200,7 +230,9 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     public List<AchievementDto> searchWithSort(String sortBy, String order) {
         List<AchievementDto> list = search(null);
-        if (list.isEmpty()) return list;
+        if (list.isEmpty()) {
+            return list;
+        }
 
         String normalizedSort = sortBy == null ? "date" : sortBy.trim().toLowerCase();
         Comparator<AchievementDto> comparator;
@@ -229,8 +261,15 @@ public class AchievementServiceImpl implements AchievementService {
         d.setTitle(e.getTitle());
         d.setUserId(e.getAuthorId());
         d.setFileId(e.getFileId());
-        if (e.getAuthors() != null && !e.getAuthors().isEmpty()) d.setAuthors(List.of(e.getAuthors().split(",")));
-        if (e.getType() != null) d.setType(e.getType());
+        if (e.getAuthors() != null && !e.getAuthors().isEmpty()) {
+            d.setAuthors(List.of(e.getAuthors().split(",")));
+        }
+        if (e.getCategories() != null && !e.getCategories().isEmpty()) {
+            d.setCategories(List.of(e.getCategories().split(",")));
+        }
+        if (e.getType() != null) {
+            d.setType(e.getType());
+        }
         d.setAbstractText(e.getAbstractText());
         d.setCreatedAt(e.getCreatedAt());
         return d;
@@ -242,19 +281,40 @@ public class AchievementServiceImpl implements AchievementService {
         e.setTitle(d.getTitle());
         e.setAuthorId(d.getUserId());
         e.setFileId(d.getFileId());
-        if (d.getAuthors() != null && !d.getAuthors().isEmpty()) e.setAuthors(String.join(",", d.getAuthors()));
-        if (d.getType() != null) e.setType(d.getType());
+        if (d.getAuthors() != null && !d.getAuthors().isEmpty()) {
+            e.setAuthors(limitLen(String.join(",", d.getAuthors()), AUTHORS_MAX_LEN));
+        }
+        if (d.getCategories() != null && !d.getCategories().isEmpty()) {
+            e.setCategories(String.join(",", d.getCategories()));
+        }
+        if (d.getType() != null) {
+            e.setType(d.getType());
+        }
         e.setAbstractText(d.getAbstractText());
         return e;
     }
 
+    private static String limitLen(String s, int maxLen) {
+        if (s == null) {
+            return null;
+        }
+        if (maxLen <= 0) {
+            return "";
+        }
+        return s.length() <= maxLen ? s : s.substring(0, maxLen);
+    }
+
     private boolean containsIgnoreCase(String source, String keywordLower) {
-        if (source == null || source.isEmpty()) return false;
+        if (source == null || source.isEmpty()) {
+            return false;
+        }
         return source.toLowerCase().contains(keywordLower);
     }
 
     private boolean matchKeywords(AchievementEntity entity, String keyword) {
-        if (keyword == null || keyword.isEmpty()) return true;
+        if (keyword == null || keyword.isEmpty()) {
+            return true;
+        }
         String lower = keyword.toLowerCase();
         return containsIgnoreCase(entity.getTitle(), lower)
                 || containsIgnoreCase(entity.getAuthors(), lower)
@@ -262,18 +322,30 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     private boolean matchClassification(AchievementEntity entity, String classification) {
-        if (classification == null || classification.isEmpty()) return true;
+        if (classification == null || classification.isEmpty()) {
+            return true;
+        }
         String categories = entity.getCategories();
         return categories != null && categories.contains(classification);
     }
 
     private boolean matchYearRange(AchievementEntity entity, Integer fromYear, Integer toYear) {
-        if (fromYear == null && toYear == null) return true;
-        if (entity.getCreatedAt() == null) return false;
+        if (fromYear == null && toYear == null) {
+            return true;
+        }
+        if (entity.getCreatedAt() == null) {
+            return false;
+        }
         Integer createdYear = extractYear(entity.getCreatedAt());
-        if (createdYear == null) return false;
-        if (fromYear != null && createdYear < fromYear) return false;
-        if (toYear != null && createdYear > toYear) return false;
+        if (createdYear == null) {
+            return false;
+        }
+        if (fromYear != null && createdYear < fromYear) {
+            return false;
+        }
+        if (toYear != null && createdYear > toYear) {
+            return false;
+        }
         return true;
     }
 

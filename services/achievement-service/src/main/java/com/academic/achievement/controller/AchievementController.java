@@ -4,6 +4,9 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,14 +36,19 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Achievement Service", description = "成就相关接口")
 public class AchievementController {
 
+    private static final Logger log = LoggerFactory.getLogger(AchievementController.class);
+
     private final AchievementService service;
     private final EnvironmentConfig envConfig;
     private final WebClient analyticsClient;
 
-    public AchievementController(AchievementService service, EnvironmentConfig envConfig, WebClient.Builder webClientBuilder) {
+    public AchievementController(AchievementService service,
+            EnvironmentConfig envConfig,
+            WebClient.Builder webClientBuilder,
+            @Value("${analytics.service.url:http://analytics-service:8084}") String analyticsBaseUrl) {
         this.service = service;
         this.envConfig = envConfig;
-        this.analyticsClient = webClientBuilder.baseUrl("http://localhost:8084").build();
+        this.analyticsClient = webClientBuilder.baseUrl(analyticsBaseUrl).build();
     }
 
     @PostMapping
@@ -62,6 +70,8 @@ public class AchievementController {
                         .bodyValue(body)
                         .retrieve()
                         .toBodilessEntity()
+                        .doOnError(e -> log.debug("analytics-service call failed: {}", e.toString()))
+                        .onErrorResume(e -> reactor.core.publisher.Mono.empty())
                         .subscribe();
             }
         } catch (Exception ignore) {
@@ -245,6 +255,8 @@ public class AchievementController {
                         .bodyValue(body)
                         .retrieve()
                         .toBodilessEntity()
+                        .doOnError(e -> log.debug("analytics-service call failed: {}", e.toString()))
+                        .onErrorResume(e -> reactor.core.publisher.Mono.empty())
                         .subscribe();
             }
         } catch (Exception ignore) {

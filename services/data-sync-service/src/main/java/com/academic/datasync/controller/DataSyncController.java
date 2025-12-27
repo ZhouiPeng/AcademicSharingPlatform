@@ -1,15 +1,15 @@
 package com.academic.datasync.controller;
 
-import com.academic.datasync.service.DataSyncService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.academic.datasync.service.DataSyncService;
+
 @RestController
 @RequestMapping("/api/sync")
 public class DataSyncController {
-
 
     private final DataSyncService service;
 
@@ -19,7 +19,11 @@ public class DataSyncController {
 
     @PostMapping("/public-db")
     public ResponseEntity<String> pull() {
-        service.pullFromPublicDb();
+        try {
+            service.pullFromPublicDb();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("error");
+        }
         return ResponseEntity.ok("started");
     }
 }
