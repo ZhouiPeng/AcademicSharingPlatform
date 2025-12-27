@@ -4,7 +4,7 @@ public class TotalResponseModel
 {
     private int total;
 
-    public void setTotal(int total)
+    public TotalResponseModel(int total)
     {
         this.total = total;
     }
