@@ -1,0 +1,279 @@
+[33mcommit 54411960b5d00eb333b2ec67a06e8ee1f15d0a1c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Josue <2990143625@qq.com>
+Date:   Sat Dec 27 12:24:44 2025 +0800
+
+    撤销了data插件
+
+[33mcommit 5c2399783532db9a091ff8a956da924bf5bf20e7[m
+Merge: 504cab6 091a229
+Author: Josue <2990143625@qq.com>
+Date:   Sat Dec 27 12:24:08 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit 504cab6b7064c2201a05e1486d9ce1b7f9527be2[m
+Author: Josue <2990143625@qq.com>
+Date:   Sat Dec 27 12:23:53 2025 +0800
+
+    撤销了data插件
+
+[33mcommit 091a229d70cc560fdd0fd691aab5964da972a62a[m
+Merge: 399683d 3d85707
+Author: eibif <2955671840@qq.com>
+Date:   Sat Dec 27 11:56:13 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit 399683d8ffb2c98850c92878782717e5a5bec31a[m
+Author: eibif <2955671840@qq.com>
+Date:   Sat Dec 27 11:56:08 2025 +0800
+
+    添加重复成果检测
+
+[33mcommit 3d85707e272be263d8968a5b68776626f1d2b252[m
+Author: Josue <2990143625@qq.com>
+Date:   Sat Dec 27 11:53:04 2025 +0800
+
+    更新了一些请求体的校验
+
+[33mcommit 36d843e0a62bd2b199efd6103e67fde6c1f73598[m
+Merge: 214ecac 1daa72f
+Author: Josue <2990143625@qq.com>
+Date:   Sat Dec 27 11:48:16 2025 +0800
+
+    修改了请求体
+
+[33mcommit 214ecac527286699672dae0c73c470d0f48d05b8[m
+Author: Josue <2990143625@qq.com>
+Date:   Sat Dec 27 11:44:17 2025 +0800
+
+    修改了请求体
+
+[33mcommit 1daa72f6d942a09f5930e237f529aee8e0ec3dd8[m
+Merge: ea9abe7 dc6d176
+Author: eibif <2955671840@qq.com>
+Date:   Sat Dec 27 11:27:49 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit ea9abe7f37718b0119c8ee5b75960ab41faba744[m
+Author: eibif <2955671840@qq.com>
+Date:   Sat Dec 27 11:27:39 2025 +0800
+
+    修改成果服务dto错误
+
+[33mcommit dc6d176bcdf612cf042b5227d0f28bb2ad6e8fd2[m
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Sat Dec 27 03:30:39 2025 +0800
+
+    test admin-service
+
+[33mcommit c84c7ca12fcf864bec64ae5479b63d56fe9c2cc7[m
+Author: Josue <2990143625@qq.com>
+Date:   Fri Dec 26 21:14:59 2025 +0800
+
+    修改了全部的请求体和响应体模型
+
+[33mcommit 4d2cdecbecb55cb27b28779044f4b6d4bf978206[m
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Fri Dec 26 16:37:32 2025 +0800
+
+    temp
+
+[33mcommit 962f5484da280bb84708b208c9cb2252f6aaffec[m
+Merge: f400222 e05007f
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Fri Dec 26 16:16:02 2025 +0800
+
+    Merge branch 'main' of github.com:ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit f400222e3fa61060083fad8f4b90d04ff96c8b5c[m
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Fri Dec 26 15:58:35 2025 +0800
+
+    add JWT Authorization
+
+[33mcommit e05007f08d9fdfcc52a37e2b7cb5ce94a4bef1c8[m
+Author: Josue <2990143625@qq.com>
+Date:   Fri Dec 26 13:12:40 2025 +0800
+
+    添加获取用户总数接口
+
+[33mcommit 5e09c5d0e8c8b2022e586b09673f2779d7f2aa6a[m
+Merge: 6e6c031 c391d8f
+Author: Josue <2990143625@qq.com>
+Date:   Fri Dec 26 12:50:16 2025 +0800
+
+    修改冲突
+
+[33mcommit 6e6c031b867a01c6ee2113e86f6e892740348cc1[m
+Author: Josue <2990143625@qq.com>
+Date:   Fri Dec 26 12:47:20 2025 +0800
+
+    统一修改了返回体
+
+[33mcommit c391d8fc8df42729c300b2d5139ea7c7fb91899e[m
+Merge: f96ed86 7449324
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Fri Dec 26 12:25:11 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit f96ed86a1560f91a5167ef7df1b947d775a3a5c6[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Fri Dec 26 12:24:08 2025 +0800
+
+    1
+
+[33mcommit 74493241c67930f1d27f029c709d1388d9ffc174[m
+Merge: 27f3840 0fba41f
+Author: Josue <2990143625@qq.com>
+Date:   Fri Dec 26 12:20:57 2025 +0800
+
+    修改了冲突
+
+[33mcommit 0fba41f5f1b4fddfeabec10c85b5f5e5827a5cc6[m
+Author: eibif <2955671840@qq.com>
+Date:   Fri Dec 26 00:51:17 2025 +0800
+
+    成果添加收藏数和下载数属性，redis计数
+
+[33mcommit cf61838ff9dc7000cc65075451c4fb8050149d0d[m
+Author: eibif <2955671840@qq.com>
+Date:   Thu Dec 25 23:55:08 2025 +0800
+
+    添加/achievements/mine接口获取用户发过的所有成果
+
+[33mcommit 868b22c04c6f9bb0e83d3d6b2bcc09918e00f9f9[m
+Author: eibif <2955671840@qq.com>
+Date:   Thu Dec 25 23:24:04 2025 +0800
+
+    添加一键部署脚本
+
+[33mcommit f2f9a926b6c6a35c6335678699ce6292a0c0379f[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Thu Dec 25 21:18:48 2025 +0800
+
+    change user-service
+
+[33mcommit 959b2c7277be44efba518bb03dc5026454ff59df[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Wed Dec 24 23:54:34 2025 +0800
+
+    newest
+
+[33mcommit 27f3840cac5a7e970ae996872c8bbacd98ae2a47[m
+Merge: d8cdc00 54cfac6
+Author: Josue <2990143625@qq.com>
+Date:   Wed Dec 24 21:08:47 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit d8cdc00b8d1eb3361d726914eb5a8f1babeffa6a[m
+Author: Josue <2990143625@qq.com>
+Date:   Wed Dec 24 21:08:41 2025 +0800
+
+    修改了注册接口的返回格式
+
+[33mcommit 54cfac6af0084096359288b115da976a3816b806[m
+Merge: efa627e 3a55f47
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Wed Dec 24 21:07:05 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit efa627ec15aa9d1171ed5c034649e4905afa104d[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Wed Dec 24 21:06:49 2025 +0800
+
+    change readme.md
+
+[33mcommit eec3a206086adecfabfab58988c4c51b49bf3328[m
+Merge: 659e86a 3a55f47
+Author: Josue <2990143625@qq.com>
+Date:   Wed Dec 24 19:36:00 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit 659e86a63ae514c082fda820c8be99eab769c50d[m
+Author: Josue <2990143625@qq.com>
+Date:   Wed Dec 24 19:35:55 2025 +0800
+
+    添加了热重载插件
+
+[33mcommit 3a55f4790508c61b5d6ae56fec83745bc9474bed[m
+Merge: 9622452 a703eec
+Author: eibif <2955671840@qq.com>
+Date:   Wed Dec 24 13:47:13 2025 +0800
+
+    Merge branch 'main' of https://github.com/ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit 96224523970c4a01f3dc4612d28920c64f0e7a2c[m
+Author: eibif <2955671840@qq.com>
+Date:   Wed Dec 24 13:44:27 2025 +0800
+
+    成果数据库连接华为云
+
+[33mcommit 94514e86c048f4290d02b4d53756fcac3063a670[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Wed Dec 24 00:01:39 2025 +0800
+
+    1
+
+[33mcommit a703eec8760ed4cc778d543a61e72f3209eb1fc3[m
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Wed Dec 24 00:00:40 2025 +0800
+
+    url
+
+[33mcommit 7d0af0053bf216819b2565cddee5229bfdb06592[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Tue Dec 23 23:57:34 2025 +0800
+
+    change url
+
+[33mcommit e9942d19aef0a19e55e92b5f51fcd724f4bbe0b6[m
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Tue Dec 23 16:35:25 2025 +0800
+
+    complete deployment of all services and swagger
+
+[33mcommit 5ff8137fd825eb506e46fff00fcbe586a4b7c2a7[m
+Merge: f0846dd d0c8689
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Mon Dec 22 18:36:14 2025 +0800
+
+    Merge branch 'main' of github.com:ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit f0846ddb1dcbb99a709622acf5f4dfd9c47d11bc[m
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Mon Dec 22 18:33:42 2025 +0800
+
+    complete Swagger Aggregation
+
+[33mcommit d0c86898cdce0fcdd1432db5fa867d0a650746e5[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Sun Dec 14 22:07:38 2025 +0800
+
+    1
+
+[33mcommit 7988b9106ed30962ca82f7416bc4612f3ac5a699[m
+Merge: 351c457 491eb3a
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Sun Dec 14 21:28:01 2025 +0800
+
+    Merge branch 'main' of github.com:ZhouiPeng/AcademicSharingPlatform
+
+[33mcommit 351c45763d1e07c406a6d3b520e0b47acba53966[m
+Author: 冉伟豪 <hollowsky655@gmail.com>
+Date:   Sun Dec 14 21:23:50 2025 +0800
+
+    complete compose
+
+[33mcommit 491eb3ab5e2623c234c88e8156781c65378487d4[m
+Author: 让你飞起来 <2171954760@qq.com>
+Date:   Sun Dec 14 21:19:57 2025 +0800
+
+    修改analytics的application
+
+[33mcommit 2b65060b251f8fe6b239ca82be0c
