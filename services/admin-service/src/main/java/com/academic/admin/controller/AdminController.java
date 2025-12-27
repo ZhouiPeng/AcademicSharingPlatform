@@ -29,19 +29,19 @@ public class AdminController {
         this.adminService = adminService;
     }
 
-    @PostMapping("/authentication/{userId}")
+    @PostMapping("/authentication")
     @Operation(summary = "创建认证申请")
     public Mono<ResponseEntity<ApiResponse<Map<String, String>>>> createAuthentication(
-            @PathVariable @NotBlank String userId,
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
             @RequestBody @Valid AuthRequest requestBody) {
-        return adminService.createAuthentication(userId, requestBody)
+        return adminService.createAuthentication(userIdHeader, requestBody)
                 .map(status -> ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status))));
     }
 
-    @GetMapping("/authentication/{userId}")
+    @GetMapping("/authentication")
     @Operation(summary = "获取认证申请列表")
-    public ResponseEntity<ApiResponse<List<AuthDto>>> listAuthentications(@PathVariable @NotBlank String userId) {
-        return ResponseEntity.ok(ApiResponse.success(adminService.listAuthentications(userId)));
+    public ResponseEntity<ApiResponse<List<AuthDto>>> listAuthentications(@RequestHeader(name = "X-User-Id") String userIdHeader) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.listAuthentications(userIdHeader)));
     }
 
     @PutMapping("/authentication/{formId}")
@@ -53,19 +53,19 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
     }
 
-    @PostMapping("/report/{reporterId}")
+    @PostMapping("/report")
     @Operation(summary = "创建举报")
     public Mono<ResponseEntity<ApiResponse<Map<String, String>>>> createReport(
-            @PathVariable @NotBlank String reporterId,
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
             @RequestBody @Valid ReportRequest req) {
-        return adminService.createReport(reporterId, req)
+        return adminService.createReport(userIdHeader, req)
                 .map(status -> ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status))));
     }
 
-    @GetMapping("/report/{reporterId}")
+    @GetMapping("/report")
     @Operation(summary = "获取举报列表")
-    public ResponseEntity<ApiResponse<List<ReportDto>>> listReports(@PathVariable @NotBlank String reporterId) {
-        return ResponseEntity.ok(ApiResponse.success(adminService.listReports(reporterId)));
+    public ResponseEntity<ApiResponse<List<ReportDto>>> listReports(@RequestHeader(name = "X-User-Id") String userIdHeader) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.listReports(userIdHeader)));
     }
 
     @PutMapping("/report/{reportId}")
@@ -84,12 +84,12 @@ public class AdminController {
                 .then(Mono.just(ResponseEntity.ok(ApiResponse.success(null))));
     }
 
-    @PutMapping("/information/{userId}")
+    @PutMapping("/information")
     @Operation(summary = "标记系统消息为已读")
     public ResponseEntity<ApiResponse<Void>> readInformation(
-            @PathVariable @NotBlank String userId,
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
             @RequestBody @Valid RODInfoRequest req) {
-        adminService.readInformation(userId, req.getId());
+        adminService.readInformation(userIdHeader, req.getId());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -101,18 +101,18 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @DeleteMapping("/information/{userId}")
+    @DeleteMapping("/information/person")
     @Operation(summary = "删除个人系统消息")
     public ResponseEntity<ApiResponse<Void>> deletePersonalInformation(
-            @PathVariable @NotBlank String userId,
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
             @RequestBody @Valid RODInfoRequest req) {
-        adminService.deletePersonalInformation(userId, req.getId());
+        adminService.deletePersonalInformation(userIdHeader, req.getId());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @GetMapping("/information/{userId}")
+    @GetMapping("/information")
     @Operation(summary = "获取系统消息列表")
-    public ResponseEntity<ApiResponse<List<InformationDto>>> getInformation(@PathVariable @NotBlank String userId) {
-        return ResponseEntity.ok(ApiResponse.success(adminService.getInformation(userId)));
+    public ResponseEntity<ApiResponse<List<InformationDto>>> getInformation(@RequestHeader(name = "X-User-Id") String userIdHeader) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getInformation(userIdHeader)));
     }
 }

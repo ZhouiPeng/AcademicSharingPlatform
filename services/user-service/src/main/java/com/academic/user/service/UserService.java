@@ -5,7 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import org.springframework.stereotype.Service;
 
 import com.academic.user.common.ServiceError;
-import com.academic.user.dto.User;
+import com.academic.user.dto.service.User;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
 @Service

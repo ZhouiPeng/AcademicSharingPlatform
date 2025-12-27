@@ -49,6 +49,9 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
     ports:
       - "6379:6379"
     volumes:

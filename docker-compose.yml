@@ -3,15 +3,15 @@ services:
     build: ./services/user-service
     environment:
       - JWT_SECRET=${JWT_SECRET}
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_PORT=${MYSQL_PORT}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_USER_DB_NAME=${MYSQL_USER_DB_NAME}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - MYSQL_PORT=${MYSQL_PORT:-3306}
+      - MYSQL_USER=${MYSQL_USER:-buaa}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-Password@^@114514}
+      - MYSQL_USER_DB_NAME=${MYSQL_USER_DB_NAME:-user_service}
+      - SMTP_HOST=${SMTP_HOST:-smtp.qq.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-2171954760@qq.com}
+      - SMTP_PASS=${SMTP_PASS:-unnlnytktxksebba}
     expose:
       - "8081"
     depends_on:
@@ -26,11 +26,11 @@ services:
   achievement-service:
     build: ./services/achievement-service
     environment:
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_PORT=${MYSQL_PORT}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_ACHIEVE_DB_NAME=${MYSQL_ACHIEVE_DB_NAME}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - MYSQL_PORT=${MYSQL_PORT:-3306}
+      - MYSQL_USER=${MYSQL_USER:-buaa}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-Password@^@114514}
+      - MYSQL_ACHIEVE_DB_NAME=${MYSQL_ACHIEVE_DB_NAME:-achievement_service}
     expose:
       - "8082"
     depends_on:
@@ -45,15 +45,15 @@ services:
   file-service:
     build: ./services/file-service
     environment:
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_PORT=${MYSQL_PORT}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_FILE_DB_NAME=${MYSQL_FILE_DB_NAME}
-      - OBS_ENDPOINT=${OBS_ENDPOINT}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - MYSQL_PORT=${MYSQL_PORT:-3306}
+      - MYSQL_USER=${MYSQL_USER:-buaa}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-Password@^@114514}
+      - MYSQL_FILE_DB_NAME=${MYSQL_FILE_DB_NAME:-file_service}
+      - OBS_ENDPOINT=${OBS_ENDPOINT:-https://obs.cn-north-4.myhuaweicloud.com}
       - OBS_ACCESS_KEY=${OBS_ACCESS_KEY}
       - OBS_SECRET_KEY=${OBS_SECRET_KEY}
-      - OBS_BUCKET=${OBS_BUCKET}
+      - OBS_BUCKET=${OBS_BUCKET:-team13-file}
     expose:
       - "8083"
     depends_on:
@@ -78,11 +78,11 @@ services:
   analytics-service:
     build: ./services/analytics-service
     environment:
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_PORT=${MYSQL_PORT}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_ANALYTICS_DB_NAME=${MYSQL_ANALYTICS_DB_NAME}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - MYSQL_PORT=${MYSQL_PORT:-3306}
+      - MYSQL_USER=${MYSQL_USER:-buaa}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-Password@^@114514}
+      - MYSQL_ANALYTICS_DB_NAME=${MYSQL_ANALYTICS_DB_NAME:-analytics_service}
     expose:
       - "8084"
     depends_on:
@@ -97,16 +97,16 @@ services:
   admin-service:
     build: ./services/admin-service
     environment:
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_PORT=${MYSQL_PORT}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_ADMIN_DB_NAME=${MYSQL_ADMIN_DB_NAME}
-      - MONGO_HOST=${MONGO_HOST}
-      - MONGO_PORT=${MONGO_PORT}
-      - MONGO_USER=${MONGO_USER}
-      - MONGO_PASSWORD=${MONGO_PASSWORD}
-      - MONGO_ADMIN_DB_NAME=${MONGO_ADMIN_DB_NAME}
+      - MYSQL_HOST=${MYSQL_HOST:-mysql}
+      - MYSQL_PORT=${MYSQL_PORT:-3306}
+      - MYSQL_USER=${MYSQL_USER:-buaa}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-Password@^@114514}
+      - MYSQL_ADMIN_DB_NAME=${MYSQL_ADMIN_DB_NAME:-admin_service}
+      - MONGO_HOST=${MONGO_HOST:-mongo}
+      - MONGO_PORT=${MONGO_PORT:-27017}
+      - MONGO_USER=${MONGO_USER:-aaub}
+      - MONGO_PASSWORD=${MONGO_PASSWORD:-Ysg%(@oweZG}
+      - MONGO_ADMIN_DB_NAME=${MONGO_ADMIN_DB_NAME:-admin_service}
     expose:
       - "8085"
     depends_on:
@@ -135,8 +135,8 @@ services:
         condition: service_healthy
       user-service:
         condition: service_healthy
-      achievement-service:
-        condition: service_healthy
+      # achievement-service:
+      #   condition: service_healthy
       admin-service:
         condition: service_healthy
     healthcheck:

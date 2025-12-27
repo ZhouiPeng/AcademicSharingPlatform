@@ -1,11 +1,20 @@
 package com.academic.user.common;
 
 import java.time.Instant;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(description="通用响应对象")
 public class ApiResponse<T> {
+    @Schema(description="响应码，0表示成功，负数表示失败", example="0")
     private int code; // 1 成功，0 或其他 失败
+    
+    @Schema(description="响应消息", example="操作成功")
     private String msg;
+    
+    @Schema(description="响应数据，成功时有值，失败时为null")
     private T data;
+    
+    @Schema(description="时间戳", example="1735286400000")
     private long timestamp;
 
     public ApiResponse() {}

@@ -44,6 +44,34 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     public String upload(AchievementDto dto) {
+        // duplicate detection: same title AND (same userId OR overlapping authors)
+        String title = dto.getTitle() == null ? "" : dto.getTitle().trim();
+        if (!title.isEmpty()) {
+            java.util.List<com.academic.achievement.entity.AchievementEntity> candidates = achievementRepository.findByTitleContainingIgnoreCase(title);
+            for (com.academic.achievement.entity.AchievementEntity cand : candidates) {
+                if (cand.getTitle() == null) {
+                    continue;
+                }
+                if (!cand.getTitle().equalsIgnoreCase(title)) {
+                    continue;
+                }
+                // check same userId
+                if (dto.getUserId() != null && dto.getUserId().equals(cand.getAuthorId())) {
+                    throw new com.academic.achievement.service.DuplicateAchievementException("检测到重复：相同标题且上传用户相同");
+                }
+                // check overlapping authors
+                if (dto.getAuthors() != null && !dto.getAuthors().isEmpty() && cand.getAuthors() != null && !cand.getAuthors().isEmpty()) {
+                    java.util.Set<String> existing = java.util.Arrays.stream(cand.getAuthors().split(","))
+                            .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
+                    for (String a : dto.getAuthors()) {
+                        if (existing.contains(a)) {
+                            throw new com.academic.achievement.service.DuplicateAchievementException("检测到重复：相同标题且作者重合");
+                        }
+                    }
+                }
+            }
+        }
+
         AchievementEntity e = toEntity(dto);
         if (e.getId() == null || e.getId().isEmpty()) {
             e.setId("ach-" + System.currentTimeMillis());
@@ -272,6 +300,17 @@ public class AchievementServiceImpl implements AchievementService {
         }
         d.setAbstractText(e.getAbstractText());
         d.setCreatedAt(e.getCreatedAt());
+        // map categories stored as comma-separated string to DTO list
+        if (e.getCategories() != null && !e.getCategories().isEmpty()) {
+            d.setCategories(List.of(e.getCategories().split("\\s*,\\s*")));
+        }
+        // populate counts if stored in entity (Redis may hold latest counts)
+        if (e.getDownloadCount() != null) {
+            d.setDownloadCount(e.getDownloadCount());
+        }
+        if (e.getCollectCount() != null) {
+            d.setCollectCount(e.getCollectCount());
+        }
         return d;
     }
 
@@ -281,8 +320,9 @@ public class AchievementServiceImpl implements AchievementService {
         e.setTitle(d.getTitle());
         e.setAuthorId(d.getUserId());
         e.setFileId(d.getFileId());
+
         if (d.getAuthors() != null && !d.getAuthors().isEmpty()) {
-            e.setAuthors(limitLen(String.join(",", d.getAuthors()), AUTHORS_MAX_LEN));
+            e.setAuthors(String.join(",", d.getAuthors()));
         }
         if (d.getCategories() != null && !d.getCategories().isEmpty()) {
             e.setCategories(String.join(",", d.getCategories()));
