@@ -1,11 +1,13 @@
 package com.academic.user.dto.response;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class TotalResponseModel
 {
     private int total;
-
-    public TotalResponseModel(int total)
-    {
-        this.total = total;
-    }
 }

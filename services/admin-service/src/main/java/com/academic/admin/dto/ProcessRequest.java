@@ -10,8 +10,6 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class ProcessRequest {
     @NotBlank 
-    private String userId;
-    @NotBlank 
     private String status;
     @NotBlank 
     private String remarks;

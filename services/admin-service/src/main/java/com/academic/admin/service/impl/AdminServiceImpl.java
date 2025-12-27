@@ -52,12 +52,12 @@ public class AdminServiceImpl implements AdminService {
     public Mono<String> createAuthentication(String userId, AuthRequest req) {
         String status = "PENDING";
         return assignedAdmin()
-                .defaultIfEmpty(null)
+                .switchIfEmpty(Mono.error(new IllegalStateException("no assigned admin found")))
                 .flatMap(assignedAdmin -> {
                     AuthRequestEntity auth = AuthRequestEntity.builder()
                             .id(UUID.randomUUID().toString())
                             .applicantUserId(userId)
-                            .assignedAdminId(assignedAdmin)
+                            .proceedingAdminId(assignedAdmin)
                             .realName(req.getRealName())
                             .idNumber(req.getIdNumber())
                             .phone(req.getPhone())
@@ -85,7 +85,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<AuthDto> listAuthentications(String userId) {
-        List<AuthRequestEntity> ents = authRequestRepository.findByApplicantUserIdOrderByCreatedAtDesc(userId);
+        List<AuthRequestEntity> ents = authRequestRepository.findByProceedingAdminIdOrderByCreatedAtDesc(userId);
         List<AuthDto> res = new ArrayList<>(ents.size());
         for (AuthRequestEntity e : ents) {
             String st = e.getStatus();
@@ -117,7 +117,7 @@ public class AdminServiceImpl implements AdminService {
         authRequestRepository.save(ent);
 
         SendInfoRequest info = new SendInfoRequest();
-        info.setTargetGroup(req.getUserId());
+        info.setTargetGroup(ent.getApplicantUserId());
         info.setTitle("门户认证申请处理结果通知");
         info.setContent("申请结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
         sendInformation(info).subscribe();
@@ -129,16 +129,17 @@ public class AdminServiceImpl implements AdminService {
     public Mono<String> createReport(String reporterId, ReportRequest req) {
         String status = "PENDING";
         return assignedAdmin()
-                .defaultIfEmpty(null)
+                .switchIfEmpty(Mono.error(new IllegalStateException("no assigned admin found")))
                 .flatMap(assignedAdmin -> {
                     ReportEntity r = ReportEntity.builder()
-                            .id(UUID.randomUUID().toString())
-                            .reporterId(reporterId)
-                            .type(req.getType())
-                            .targetId(req.getTargetId())
-                            .reason(req.getReason())
-                            .status(status)
-                            .build();
+                        .id(UUID.randomUUID().toString())
+                        .proceedingAdminId(assignedAdmin)
+                        .reporterId(reporterId)
+                        .type(req.getType())
+                        .targetId(req.getTargetId())
+                        .reason(req.getReason())
+                        .status(status)
+                        .build();
 
                     return Mono.fromCallable(() -> reportRepository.save(r))
                             .subscribeOn(Schedulers.boundedElastic())
@@ -161,8 +162,11 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public List<ReportDto> listReports(String reporterId) {
-        List<ReportEntity> ents = reportRepository.findByReporterIdOrderByCreatedAtDesc(reporterId);
+    public List<ReportDto> listReports(String userId) {
+        List<ReportEntity> ents = reportRepository.findByProceedingAdminIdOrderByCreatedAtDesc(userId);
+        if (ents == null || ents.isEmpty()) {
+            throw new IllegalStateException("no reports found" + userId);
+        }
         List<ReportDto> res = new ArrayList<>(ents.size());
         for (ReportEntity e : ents) {
             String st = e.getStatus();
@@ -278,7 +282,9 @@ public class AdminServiceImpl implements AdminService {
                 .flatMap(resp -> {
                     Object d = resp.get("data");
                     @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> objList = (List<Map<String, Object>>) d;
+                    Map<String, Object> records = (Map<String, Object>) d;
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> objList = (List<Map<String, Object>>) records.get("records");
                     List<Map<String, String>> converted = objList.stream().map(m -> {
                         Map<String, String> map = new HashMap<>();
                         for (Map.Entry<String, Object> e : m.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
@@ -297,9 +303,10 @@ public class AdminServiceImpl implements AdminService {
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                 })
                 .flatMap(resp -> {
-                    Object d = resp.get("data");
                     @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> objList = (List<Map<String, Object>>) d;
+                    Map<String, Object> d = (Map<String, Object>) resp.get("data");
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> objList = (List<Map<String, Object>>) d.get("records");
                     List<Map<String, String>> converted = objList.stream().map(m -> {
                         Map<String, String> map = new HashMap<>();
                         for (Map.Entry<String, Object> e : m.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
