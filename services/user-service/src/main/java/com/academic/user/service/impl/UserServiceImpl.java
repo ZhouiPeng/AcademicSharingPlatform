@@ -18,7 +18,7 @@ import com.academic.user.common.Role;
 import com.academic.user.common.Secure;
 import com.academic.user.common.ServiceError;
 import com.academic.user.common.TokenEntry;
-import com.academic.user.dto.User;
+import com.academic.user.dto.service.User;
 import com.academic.user.mapper.UserMapper;
 import com.academic.user.service.UserService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -155,7 +155,7 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new ServiceError("用户不存在", 0);
         }
-        user.setPasswordHash(Secure.sha256(newPasswordHash));
+        user.setPasswordHash(newPasswordHash);
         user.setUpdatedAt(LocalDateTime.now());
         int r = userMapper.updateUser(user);
         if (r == 0) {

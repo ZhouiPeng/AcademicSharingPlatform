@@ -2,14 +2,12 @@ package com.academic.user;
 
 import com.academic.user.common.Secure;
 import com.academic.user.common.ServiceError;
-import com.academic.user.dto.User;
+import com.academic.user.dto.service.User;
 import com.academic.user.service.UserService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.List;
 
 
 @SpringBootTest
