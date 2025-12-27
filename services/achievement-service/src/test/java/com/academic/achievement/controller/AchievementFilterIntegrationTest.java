@@ -32,7 +32,9 @@ import com.academic.achievement.repository.AchievementRepository;
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.redis.host=localhost",
-        "spring.redis.port=6379"
+        "spring.redis.port=6379",
+        "spring.data.redis.host=localhost",
+        "spring.data.redis.port=6379"
     })
 class AchievementFilterIntegrationTest {
 
