@@ -233,6 +233,13 @@ public class AchievementServiceImpl implements AchievementService {
         if (e.getType() != null) d.setType(e.getType());
         d.setAbstractText(e.getAbstractText());
         d.setCreatedAt(e.getCreatedAt());
+        // map categories stored as comma-separated string to DTO list
+        if (e.getCategories() != null && !e.getCategories().isEmpty()) {
+            d.setCategories(List.of(e.getCategories().split("\\s*,\\s*")));
+        }
+        // populate counts if stored in entity (Redis may hold latest counts)
+        if (e.getDownloadCount() != null) d.setDownloadCount(e.getDownloadCount());
+        if (e.getCollectCount() != null) d.setCollectCount(e.getCollectCount());
         return d;
     }
 
@@ -243,6 +250,7 @@ public class AchievementServiceImpl implements AchievementService {
         e.setAuthorId(d.getUserId());
         e.setFileId(d.getFileId());
         if (d.getAuthors() != null && !d.getAuthors().isEmpty()) e.setAuthors(String.join(",", d.getAuthors()));
+        if (d.getCategories() != null && !d.getCategories().isEmpty()) e.setCategories(String.join(",", d.getCategories()));
         if (d.getType() != null) e.setType(d.getType());
         e.setAbstractText(d.getAbstractText());
         return e;

@@ -23,7 +23,17 @@ import com.academic.achievement.dto.ApiResponse;
 import com.academic.achievement.dto.PageResult;
 import com.academic.achievement.repository.AchievementRepository;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {
+        "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.redis.host=localhost",
+        "spring.redis.port=6379"
+    })
 class AchievementFilterIntegrationTest {
 
     @Autowired
@@ -110,6 +120,7 @@ class AchievementFilterIntegrationTest {
         dto.setUserId("test-user");
         dto.setType(1);
         dto.setAuthors(authors);
+        dto.setCategories(List.of(classification));
         dto.setAbstractText(abstractText);
         dto.setFileId("file-" + System.nanoTime());
 
@@ -129,8 +140,10 @@ class AchievementFilterIntegrationTest {
 
         achievementRepository.findById(achievementId).ifPresent(entity -> {
             entity.setCreatedAt(createdAt);
-            entity.setCategories(classification);
             achievementRepository.save(entity);
+            // verify categories persisted to DB (stored as comma-separated string)
+            assertThat(entity.getCategories()).isNotNull();
+            assertThat(entity.getCategories()).contains(classification);
         });
 
         return achievementId;
