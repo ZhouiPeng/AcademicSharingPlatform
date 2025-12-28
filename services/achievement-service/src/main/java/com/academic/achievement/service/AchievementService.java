@@ -10,7 +10,6 @@ public interface AchievementService {
 
     String upload(AchievementDto dto);
 
-
     AchievementDto get(String achId);
 
     void update(String achId, AchievementDto dto);
@@ -18,8 +17,6 @@ public interface AchievementService {
     void delete(String achId);
 
     List<AchievementDto> listByAuthor(String authorId);
-
-    String generateDownloadLink(String achId);
 
     CollectionFolderDto createFolder(CollectionFolderDto dto);
 
@@ -42,4 +39,8 @@ public interface AchievementService {
     void cite(String achId);
 
     List<AchievementDto> searchWithSort(String sortBy, String order);
+
+    void insertReviewEntity(String achId, String userId);
+
+    List<AchievementDto> getReviews();
 }

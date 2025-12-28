@@ -1,6 +1,5 @@
 package com.academic.achievement.controller;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -53,9 +52,14 @@ public class AchievementController {
 
     @PostMapping
     @Operation(summary = "上传成就")
-    public ResponseEntity<ApiResponse<Object>> upload(@RequestBody AchievementDto dto) {
+    public ResponseEntity<ApiResponse<Object>> upload(
+            @RequestHeader(name = "X-User-Role", required = false) String userRoleHeader,
+            @RequestBody AchievementDto dto) {
         try {
             String id = service.upload(dto);
+            if (!userRoleHeader.equals("ADMIN")) {
+                service.insertReviewEntity(id, dto.getUserId());
+            }
             java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);
             // report author relationship to analytics-service asynchronously (fire-and-forget)
             try {
@@ -205,16 +209,6 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
-    @GetMapping("/{achId}/download")
-    @Operation(summary = "生成成就下载链接")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> download(@PathVariable String achId) {
-        String url = service.generateDownloadLink(achId);
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("downloadUrl", url);
-        data.put("expiresAt", Instant.now().plusSeconds(3600).toEpochMilli());
-        return ResponseEntity.ok(ApiResponse.success(data));
-    }
-
     @PostMapping("/{achId}/cite")
     @Operation(summary = "为指定成就添加一次引用（citedCount +1）")
     public ResponseEntity<ApiResponse<Object>> cite(@PathVariable String achId) {
@@ -252,20 +246,21 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(null, "删除收藏夹成功"));
     }
 
-        @GetMapping("/folders/{folderId}/items")
-        @Operation(summary = "列出指定收藏夹内的成就")
-        public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> listByFolder(
-                @PathVariable String folderId,
-                @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
-                @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
-            java.util.List<AchievementDto> list = service.listByFolder(folderId);
-            int total = list.size();
-            int from = Math.max(0, (pageNum - 1) * pageSize);
-            int to = Math.min(total, from + pageSize);
-            java.util.List<AchievementDto> items = from < to ? list.subList(from, to) : java.util.List.of();
-            com.academic.achievement.dto.PageResult<AchievementDto> page = new com.academic.achievement.dto.PageResult<>(total, items);
-            return ResponseEntity.ok(ApiResponse.success(page));
-        }
+    @GetMapping("/folders/{folderId}/items")
+    @Operation(summary = "列出指定收藏夹内的成就")
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> listByFolder(
+            @PathVariable String folderId,
+            @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        java.util.List<AchievementDto> list = service.listByFolder(folderId);
+        int total = list.size();
+        int from = Math.max(0, (pageNum - 1) * pageSize);
+        int to = Math.min(total, from + pageSize);
+        java.util.List<AchievementDto> items = from < to ? list.subList(from, to) : java.util.List.of();
+        com.academic.achievement.dto.PageResult<AchievementDto> page = new com.academic.achievement.dto.PageResult<>(total, items);
+        return ResponseEntity.ok(ApiResponse.success(page));
+    }
+
     @GetMapping("/collections")
     @Operation(summary = "列出所有收藏夹")
     public ResponseEntity<ApiResponse<java.util.List<CollectionFolderDto>>> listCollections() {
@@ -303,7 +298,7 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
-    @PostMapping("/filter")
+    @GetMapping("/filter")
     @Operation(summary = "按过滤条件筛选成就")
     public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> filter(
             @RequestBody(required = false) AchievementFilterRequest filterRequest) {
@@ -359,5 +354,19 @@ public class AchievementController {
         out.put("isDev", String.valueOf(envConfig.isDev()));
         out.put("isProd", String.valueOf(envConfig.isProd()));
         return ResponseEntity.ok(ApiResponse.success(out));
+    }
+
+    @GetMapping("/Review")
+    @Operation(summary = "返回所有审核中的成果")
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> getReviews(
+            @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        java.util.List<AchievementDto> list = service.getReviews();
+        int total = list.size();
+        int from = Math.max(0, (pageNum - 1) * pageSize);
+        int to = Math.min(total, from + pageSize);
+        java.util.List<AchievementDto> items = from < to ? list.subList(from, to) : java.util.List.of();
+        com.academic.achievement.dto.PageResult<AchievementDto> page = new com.academic.achievement.dto.PageResult<>(total, items);
+        return ResponseEntity.ok(ApiResponse.success(page));
     }
 }

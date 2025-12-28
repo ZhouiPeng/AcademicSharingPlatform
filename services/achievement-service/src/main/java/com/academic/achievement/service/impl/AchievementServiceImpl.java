@@ -19,6 +19,7 @@ import com.academic.achievement.entity.AchievementEntity;
 import com.academic.achievement.entity.FolderEntity;
 import com.academic.achievement.repository.AchievementRepository;
 import com.academic.achievement.repository.FolderRepository;
+import com.academic.achievement.repository.ReviewRepository;
 import com.academic.achievement.service.AchievementService;
 
 @Service
@@ -26,6 +27,7 @@ public class AchievementServiceImpl implements AchievementService {
 
     private final AchievementRepository achievementRepository;
     private final FolderRepository folderRepository;
+    private final ReviewRepository reviewRepository;
     private final StringRedisTemplate redis;
 
     private final DefaultRedisScript<Long> decrIfPositiveScript;
@@ -33,9 +35,10 @@ public class AchievementServiceImpl implements AchievementService {
     // Defensive limit to avoid MySQL Data truncation when schema uses VARCHAR(255)
     private static final int AUTHORS_MAX_LEN = 255;
 
-    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, StringRedisTemplate redis) {
+    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, ReviewRepository reviewRepository, StringRedisTemplate redis) {
         this.achievementRepository = achievementRepository;
         this.folderRepository = folderRepository;
+        this.reviewRepository = reviewRepository;
         this.redis = redis;
         this.decrIfPositiveScript = new DefaultRedisScript<>();
         this.decrIfPositiveScript.setScriptText("local v = redis.call('get', KEYS[1]); if (not v) or (tonumber(v) <= 0) then return tonumber(v) or 0; else return redis.call('decr', KEYS[1]); end");
@@ -128,15 +131,6 @@ public class AchievementServiceImpl implements AchievementService {
     @Override
     public List<AchievementDto> listByAuthor(String authorId) {
         return achievementRepository.findByUserId(authorId).stream().map(this::toDto).collect(Collectors.toList());
-    }
-
-    @Override
-    public String generateDownloadLink(String achId) {
-        // use Redis INCR for atomic increment, then persist to DB
-        String key = String.format("achievement:%s:downloads", achId);
-        Long newVal = redis.opsForValue().increment(key, 1);
-        // only increment in Redis; periodic flush will persist to DB
-        return String.format("/internal/files/%s/download?ts=%d", achId, Instant.now().toEpochMilli());
     }
 
     @Override
@@ -238,7 +232,10 @@ public class AchievementServiceImpl implements AchievementService {
     public List<AchievementDto> search(String q) {
         String keyword = q == null ? "" : q.trim();
         if (keyword.isEmpty()) {
-            return achievementRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+            return achievementRepository.findAll().stream()
+                    .map(this::toDto)
+                    .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                    .collect(Collectors.toList());
         }
         final String keywordLower = keyword.toLowerCase();
         return achievementRepository.findAll().stream()
@@ -246,6 +243,7 @@ public class AchievementServiceImpl implements AchievementService {
                 || containsIgnoreCase(e.getAuthors(), keywordLower)
                 || containsIgnoreCase(e.getAbstractText(), keywordLower))
                 .map(this::toDto)
+                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -262,6 +260,7 @@ public class AchievementServiceImpl implements AchievementService {
                 .filter(e -> matchClassification(e, classification))
                 .filter(e -> matchYearRange(e, fromYear, toYear))
                 .map(this::toDto)
+                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -274,7 +273,10 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     public List<AchievementDto> listByFolder(String folderId) {
-        return achievementRepository.findByFolders_Id(folderId).stream().map(this::toDto).collect(Collectors.toList());
+        return achievementRepository.findByFolders_Id(folderId).stream()
+                .map(this::toDto)
+                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -303,6 +305,24 @@ public class AchievementServiceImpl implements AchievementService {
 
         list.sort(comparator);
         return list;
+    }
+
+    @Override
+    public void insertReviewEntity(String achId, String userId) {
+        reviewRepository.insertReviewEntity(achId, userId);
+    }
+
+    @Override
+    public List<AchievementDto> getReviews() {
+        List<AchievementDto> result = reviewRepository.findAll().stream()
+                .map(review -> {
+                    String achId = review.getAchId();
+                    Optional<AchievementEntity> opt = achievementRepository.findById(achId);
+                    return opt.map(this::toDto).orElse(null);
+                })
+                .filter(dto -> dto != null)
+                .collect(Collectors.toList());
+        return result;
     }
 
     private AchievementDto toDto(AchievementEntity e) {
@@ -421,5 +441,9 @@ public class AchievementServiceImpl implements AchievementService {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    private Boolean searchFromReview(String achId) {
+        return reviewRepository.existsByAchId(achId);
     }
 }

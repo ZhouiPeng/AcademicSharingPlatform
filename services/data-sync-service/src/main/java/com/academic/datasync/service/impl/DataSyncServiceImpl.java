@@ -75,7 +75,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
     @Value("${datasync.auto-enabled:false}")
     private boolean autoCrawlEnabled; // 开关：为 true 时启用定时爬取
 
-    @Value("${datasync.per-category-count:10}")
+    @Value("${datasync.per-category-count:100}")
     private int perCategoryCount; // 每个领域拉取数量，默认 10
 
     // OpenAlex field IDs (comma-separated). Defaults to Computer Science top-level ID.
@@ -271,7 +271,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                         if (domain != null) {
                             categories.add(domain);
                         }
-                        String achJson = buildAchievementJson(title, null, abstractText, finalFileId, null, categories);
+                        String achJson = buildAchievementJson(title, authors, abstractText, finalFileId, null, categories);
                         if (achJson == null || achJson.isBlank()) {
                             log.warn("Warn: buildAchievementJson returned empty payload for work {} (fileId={})", openalexId, finalFileId);
                             return Mono.empty();
