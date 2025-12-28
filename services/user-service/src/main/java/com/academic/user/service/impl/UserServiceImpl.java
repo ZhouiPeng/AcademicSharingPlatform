@@ -65,7 +65,7 @@ public class UserServiceImpl implements UserService {
     public User login(User requestUser) throws Exception {
         // Use injected mapper directly. add(...) returns int rows affected.
         User user = userMapper.selectOneByUserName(requestUser.getUsername());
-        if (!user.getPasswordHash().equals(requestUser.getPasswordHash())) {
+        if (user == null || !user.getPasswordHash().equals(requestUser.getPasswordHash())) {
             throw new ServiceError("用户名或密码错误", 0);
         }
         return user;

@@ -6,6 +6,7 @@ ARG JAR_FILE=target/user-service.jar
 COPY ${JAR_FILE} app.jar
 COPY docker-entrypoint.sh /user-service/
 RUN chmod +x /user-service/docker-entrypoint.sh
+RUN mkdir -p /user-service/logs && chown -R appuser:appgroup /user-service/logs
 USER appuser
 EXPOSE 8081
 ENTRYPOINT ["/user-service/docker-entrypoint.sh"]

@@ -465,7 +465,7 @@ public class UserController {
             )
         )
     })
-    @GetMapping("/users/all")
+    @GetMapping("/all")
     @ResponseBody
     public ResponseEntity<ApiResponse<TotalResponseModel>> getAllUsers() {
         ApiResponse<TotalResponseModel> apiResponse = new ApiResponse<>();
