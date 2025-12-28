@@ -290,15 +290,15 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                                 // preserve overall pipeline behavior: don't crash the whole crawl
                                 .onErrorResume(ex -> Mono.empty())
                                 .flatMap(achId -> Mono.fromCallable(() -> {
-                                    if (identifierFinal != null) {
-                                        processedIds.add(identifierFinal);
-                                    }
-                                    return (Void) null;
-                                }).subscribeOn(Schedulers.boundedElastic()))
+                            if (identifierFinal != null) {
+                                processedIds.add(identifierFinal);
+                            }
+                            return (Void) null;
+                        }).subscribeOn(Schedulers.boundedElastic()))
                                 .switchIfEmpty(Mono.fromRunnable(() -> log.warn(
-                                        "Warn: achievement-service returned empty achievementId for work {} (fileId={}); NOT marking processed, will retry next run",
-                                        openalexId,
-                                        finalFileId)));
+                                "Warn: achievement-service returned empty achievementId for work {} (fileId={}); NOT marking processed, will retry next run",
+                                openalexId,
+                                finalFileId)));
                     });
         });
     }
@@ -447,4 +447,3 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
         }
     }
 }
-
