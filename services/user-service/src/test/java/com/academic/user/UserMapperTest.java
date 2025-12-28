@@ -28,8 +28,8 @@ public class UserMapperTest {
         User user = new User();
         user.setUserId("53384ce1-2887-4f89-82c4-5082b5e1a20f");
         user.setDisplayName("Tim");
-        user.setAvatarUrl("http://1.cn");
-        user.setEmail("321@321.com");
+//        user.setAvatarUrl("http://1.cn");
+//        user.setEmail("321@321.com");
         userService.updateCurrent(user);
     }
     @Test
