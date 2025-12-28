@@ -25,12 +25,12 @@ public class FileController {
 		this.service = service;
 	}
 
-	@PostMapping(value = "/upload/{uploaderId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	@Operation(summary = "上传文件")
 	public ResponseEntity<ApiResponse<FileDto>> upload(
-			@PathVariable @NotBlank String uploaderId,
+			@RequestHeader(name = "X-User-Id") String userIdHeader,
 			@ModelAttribute @Valid FileRequest req) {
-		ApiResponse<FileDto> resp = ApiResponse.success(service.uploadFile(uploaderId, req));
+		ApiResponse<FileDto> resp = ApiResponse.success(service.uploadFile(userIdHeader, req));
 		return ResponseEntity.status(201).body(resp);
 	}
 
@@ -41,13 +41,13 @@ public class FileController {
 		return ResponseEntity.ok(ApiResponse.success(null));
 	}
 
-	@PutMapping("/modify/{uploaderId}/{fileId}")
+	@PutMapping("/modify/{fileId}")
 	@Operation(summary = "修改文件信息")
 	public ResponseEntity<ApiResponse<FileDto>> modify(
-		@PathVariable @NotBlank String uploaderId,
+		@RequestHeader(name = "X-User-Id") String userIdHeader,
 		@PathVariable @NotBlank String fileId,
 		@ModelAttribute @Valid FileRequest req) {
-		ApiResponse<FileDto> resp = ApiResponse.success(service.modifyFile(uploaderId, fileId, req));
+		ApiResponse<FileDto> resp = ApiResponse.success(service.modifyFile(userIdHeader, fileId, req));
 		return ResponseEntity.ok(resp);
 	}
 

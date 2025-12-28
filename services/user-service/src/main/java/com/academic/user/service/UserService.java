@@ -19,6 +19,8 @@ public interface UserService {
 
     User getById(String userId) throws ServiceError;
 
+    User getByUsername(String username) throws ServiceError;
+
     void updateCurrent(User user) throws ServiceError;
 
     String generateVerificationCode(String userId, String mail) throws Exception;
