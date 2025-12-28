@@ -8,7 +8,7 @@ import com.academic.achievement.dto.CollectionFolderDto;
 
 public interface AchievementService {
 
-    String upload(AchievementDto dto);
+    String upload(AchievementDto dto, String userRoleHeader);
 
     AchievementDto get(String achId);
 
@@ -40,7 +40,5 @@ public interface AchievementService {
 
     List<AchievementDto> searchWithSort(String sortBy, String order);
 
-    void insertReviewEntity(String achId, String userId);
-
-    List<AchievementDto> getReviews();
+    reactor.core.publisher.Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader, String userRoleHeader);
 }

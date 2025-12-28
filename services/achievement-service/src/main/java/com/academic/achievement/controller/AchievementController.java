@@ -56,10 +56,7 @@ public class AchievementController {
             @RequestHeader(name = "X-User-Role", required = false) String userRoleHeader,
             @RequestBody AchievementDto dto) {
         try {
-            String id = service.upload(dto);
-            if (!userRoleHeader.equals("ADMIN")) {
-                service.insertReviewEntity(id, dto.getUserId());
-            }
+            String id = service.upload(dto, userRoleHeader);
             java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);
             // report author relationship to analytics-service asynchronously (fire-and-forget)
             try {
@@ -359,9 +356,11 @@ public class AchievementController {
     @GetMapping("/Review")
     @Operation(summary = "返回所有审核中的成果")
     public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> getReviews(
+            @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(name = "X-User-Role", required = false) String userRoleHeader,
             @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
-        java.util.List<AchievementDto> list = service.getReviews();
+        java.util.List<AchievementDto> list = service.getReviews(userIdHeader, userRoleHeader).block();
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);
         int to = Math.min(total, from + pageSize);
