@@ -262,6 +262,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                         }
 
                         String finalFileId = finalFileIdOpt.get();
+                        log.info("Info: Parsed fileId for work {} -> {}", openalexId, finalFileId);
 
                         List<String> authors = extractAuthorsFromWork(work);
                         String abstractText = textOrNull(work, "abstract");
@@ -271,17 +272,33 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
                             categories.add(domain);
                         }
                         String achJson = buildAchievementJson(title, null, abstractText, finalFileId, null, categories);
-                        log.debug("Debug: Achievement JSON for OpenAlex work {} -> {}", openalexId, achJson);
+                        if (achJson == null || achJson.isBlank()) {
+                            log.warn("Warn: buildAchievementJson returned empty payload for work {} (fileId={})", openalexId, finalFileId);
+                            return Mono.empty();
+                        }
+                        log.info(
+                                "Info: Calling achievement-service for work {} (fileId={}, titleLen={}, abstractLen={}, categories={})",
+                                openalexId,
+                                finalFileId,
+                                title == null ? 0 : title.length(),
+                                abstractText == null ? 0 : abstractText.length(),
+                                categories == null ? 0 : categories.size());
 
                         return achievementClient.createAchievement(achJson)
-                                .doOnError(ex -> log.warn("Warn: createAchievement threw for work {}: {}", openalexId, ex.getMessage()))
+                                .doOnNext(achId -> log.info("Info: achievement-service created achievement for work {} -> achievementId={}", openalexId, achId))
+                                .doOnError(ex -> log.warn("Warn: createAchievement threw for work {} (fileId={}): {}", openalexId, finalFileId, ex.getMessage()))
+                                // preserve overall pipeline behavior: don't crash the whole crawl
                                 .onErrorResume(ex -> Mono.empty())
-                                .then(Mono.fromCallable(() -> {
+                                .flatMap(achId -> Mono.fromCallable(() -> {
                                     if (identifierFinal != null) {
                                         processedIds.add(identifierFinal);
                                     }
                                     return (Void) null;
-                                }));
+                                }).subscribeOn(Schedulers.boundedElastic()))
+                                .switchIfEmpty(Mono.fromRunnable(() -> log.warn(
+                                        "Warn: achievement-service returned empty achievementId for work {} (fileId={}); NOT marking processed, will retry next run",
+                                        openalexId,
+                                        finalFileId)));
                     });
         });
     }

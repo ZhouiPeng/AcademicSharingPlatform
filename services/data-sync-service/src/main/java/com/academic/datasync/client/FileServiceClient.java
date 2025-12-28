@@ -39,6 +39,8 @@ public class FileServiceClient {
         }
         String safeFilename = (filename == null || filename.isBlank()) ? "file.pdf" : filename;
 
+        log.info("Info: Uploading to file-service: uploaderId={}, urlOrId={}, fileName={}", safeUploaderId, id, safeFilename);
+
         MultipartBodyBuilder baseBuilder = new MultipartBodyBuilder();
         baseBuilder.part("fileType", "PAPER");
         baseBuilder.part("fileName", safeFilename);
