@@ -26,6 +26,7 @@ public class AchievementDto {
     private Long createdAt;
     private Long downloadCount;
     private Integer collectCount;
+    private Integer citedCount;
 
     public void setCategories(List<String> categories) {
         this.categories = categories;
@@ -113,5 +114,13 @@ public class AchievementDto {
 
     public void setCollectCount(Integer collectCount) {
         this.collectCount = collectCount;
+    }
+
+    public Integer getCitedCount() {
+        return citedCount == null ? 0 : citedCount;
+    }
+
+    public void setCitedCount(Integer citedCount) {
+        this.citedCount = citedCount;
     }
 }

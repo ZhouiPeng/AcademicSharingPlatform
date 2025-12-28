@@ -37,5 +37,9 @@ public interface AchievementService {
 
     List<AchievementDto> listByCategory(String catId);
 
+    List<AchievementDto> listByFolder(String folderId);
+
+    void cite(String achId);
+
     List<AchievementDto> searchWithSort(String sortBy, String order);
 }

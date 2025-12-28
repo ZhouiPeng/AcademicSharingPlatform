@@ -51,6 +51,8 @@ public class RedisCountsFlushService implements DisposableBean {
             if (dks != null) keys.addAll(dks);
             Set<String> cks = redis.keys("achievement:*:collects");
             if (cks != null) keys.addAll(cks);
+            Set<String> zks = redis.keys("achievement:*:citeds");
+            if (zks != null) keys.addAll(zks);
         } catch (Exception ex) {
             logger.warn("Failed to scan redis keys via KEYS; falling back to empty set", ex);
         }
@@ -76,8 +78,10 @@ public class RedisCountsFlushService implements DisposableBean {
 
                 String downloadsKey = String.format("achievement:%s:downloads", id);
                 String collectsKey = String.format("achievement:%s:collects", id);
+                    String citedsKey = String.format("achievement:%s:citeds", id);
                 String dv = redis.opsForValue().get(downloadsKey);
                 String cv = redis.opsForValue().get(collectsKey);
+                    String zv = redis.opsForValue().get(citedsKey);
 
                 if (dv != null) {
                     try {
@@ -91,6 +95,14 @@ public class RedisCountsFlushService implements DisposableBean {
                     try {
                         Method m2 = entity.getClass().getMethod("setCollectCount", Integer.class);
                         m2.invoke(entity, Integer.parseInt(cv));
+                    } catch (NoSuchMethodException e) {
+                        // ignore
+                    }
+                }
+                if (zv != null) {
+                    try {
+                        Method m3 = entity.getClass().getMethod("setCitedCount", Integer.class);
+                        m3.invoke(entity, Integer.parseInt(zv));
                     } catch (NoSuchMethodException e) {
                         // ignore
                     }
