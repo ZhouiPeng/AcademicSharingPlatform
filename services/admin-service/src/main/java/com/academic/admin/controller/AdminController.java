@@ -49,11 +49,10 @@ public class AdminController {
 
     @PutMapping("/authentication/{formId}")
     @Operation(summary = "处理认证申请")
-    public ResponseEntity<ApiResponse<Map<String, String>>> processAuthentication(
+    public ResponseEntity<ApiResponse<ProcessDto>> processAuthentication(
             @PathVariable @NotBlank String formId,
             @RequestBody @Valid ProcessRequest requestBody) {
-        String status = adminService.processAuthentication(formId, requestBody);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
+        return ResponseEntity.ok(ApiResponse.success(adminService.processAuthentication(formId, requestBody)));
     }
 
     @PostMapping("/report")
@@ -73,11 +72,10 @@ public class AdminController {
 
     @PutMapping("/report/{reportId}")
     @Operation(summary = "处理举报")
-    public ResponseEntity<ApiResponse<Map<String, String>>> processReport(
+    public ResponseEntity<ApiResponse<ProcessDto>> processReport(
             @PathVariable @NotBlank String reportId,
             @RequestBody @Valid ProcessRequest req) {
-        String status = adminService.processReport(reportId, req);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
+        return ResponseEntity.ok(ApiResponse.success(adminService.processReport(reportId, req)));
     }
 
     @PostMapping("/information")
@@ -133,7 +131,7 @@ public class AdminController {
     public ResponseEntity<ApiResponse<List<AchievementDto>>> getAchievement(
             @RequestHeader(name = "X-User-Id") String userIdHeader,
             @RequestHeader(name = "X-User-Role") String userRoleHeader) {
-        if (!userRoleHeader.equals("ADMIN")) {
+        if (userRoleHeader.equals("ADMIN")) {
             return ResponseEntity.ok(ApiResponse.success(adminService.getAchievementReview(userIdHeader)));
         } else {
             return ResponseEntity.ok(ApiResponse.success(adminService.getAchievement(userIdHeader)));
@@ -147,12 +145,11 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success(Map.of("status", adminService.checkAchievement(req.getAchievementId()))));
     }
 
-    @PutMapping("/achievement/{achievementId}")
+    @PutMapping("/achievement/{id}")
     @Operation(summary = "处理成果审核")
-    public ResponseEntity<ApiResponse<Map<String, String>>> processAchievement(
-            @PathVariable @NotBlank String achievementId,
+    public ResponseEntity<ApiResponse<ProcessDto>> processAchievement(
+            @PathVariable @NotBlank String id,
             @RequestBody @Valid ProcessRequest req) {
-        String status = adminService.processAchievement(achievementId, req);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
+        return ResponseEntity.ok(ApiResponse.success(adminService.processAchievement(id, req)));
     }
 }
