@@ -140,6 +140,23 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
+    public void cite(String achId) {
+        String key = String.format("achievement:%s:citeds", achId);
+        try {
+            redis.opsForValue().increment(key, 1);
+        } catch (Exception ex) {
+            // fallback: update DB directly if Redis is unavailable
+            Optional<AchievementEntity> opt = achievementRepository.findById(achId);
+            if (opt.isPresent()) {
+                AchievementEntity e = opt.get();
+                Integer curr = e.getCitedCount();
+                e.setCitedCount(curr == null ? 1 : curr + 1);
+                achievementRepository.save(e);
+            }
+        }
+    }
+
+    @Override
     public CollectionFolderDto createFolder(CollectionFolderDto dto) {
         FolderEntity f = new FolderEntity();
         if (dto.getId() == null || dto.getId().isEmpty()) {
@@ -256,6 +273,11 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
+    public List<AchievementDto> listByFolder(String folderId) {
+        return achievementRepository.findByFolders_Id(folderId).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
     public List<AchievementDto> searchWithSort(String sortBy, String order) {
         List<AchievementDto> list = search(null);
         if (list.isEmpty()) {
@@ -311,6 +333,10 @@ public class AchievementServiceImpl implements AchievementService {
         if (e.getCollectCount() != null) {
             d.setCollectCount(e.getCollectCount());
         }
+        if (e.getCitedCount() != null) {
+            d.setCitedCount(e.getCitedCount());
+        }
+
         return d;
     }
 

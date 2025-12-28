@@ -22,4 +22,4 @@ if [ $COUNTER -eq $MAX_ATTEMPTS ]; then
 fi
 
 echo "Starting application..."
-exec java -jar app.jar
+exec java -jar app.jar --spring.profiles.active=prod

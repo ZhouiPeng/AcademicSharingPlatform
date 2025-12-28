@@ -58,16 +58,16 @@
     <update id="updateUser" parameterType="com.academic.user.dto.service.User">
         update users
         <trim prefix="SET" suffixOverrides=",">
-            <if test="#{displayName} != null and #{displayName} != ''">
+            <if test="displayName != null and displayName != ''">
                 display_name = #{displayName},
             </if>
-            <if test="#{avatarUrl} != null and #{avatarUrl} != ''">
+            <if test="avatarUrl != null and avatarUrl != ''">
                 avatar_url = #{avatarUrl},
             </if>
-            <if test="#{email} != null and #{email} != ''">
+            <if test="email != null and email != ''">
                 email = #{email},
             </if>
-            <if test="#{passwordHash} != null and #{passwordHash} != ''">
+            <if test="passwordHash != null and passwordHash != ''">
                 password_hash = #{passwordHash},
             </if>
         </trim>

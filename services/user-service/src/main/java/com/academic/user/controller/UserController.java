@@ -202,7 +202,7 @@ public class UserController {
         ApiResponse<User> apiResponse = new ApiResponse<>();
         try {
             User user = new User();
-            user.setAvatarUrl(updateRequestModel.getDisplayName());
+            user.setAvatarUrl(updateRequestModel.getAvatarFileId());
             user.setDisplayName(updateRequestModel.getDisplayName());
             user.setEmail(updateRequestModel.getEmail());
             user.setUserId(userIdHeader);
@@ -463,7 +463,7 @@ public class UserController {
                 )
         )
     })
-    @GetMapping("/users/all")
+    @GetMapping("/all")
     @ResponseBody
     public ResponseEntity<ApiResponse<TotalResponseModel>> getAllUsers() {
         ApiResponse<TotalResponseModel> apiResponse = new ApiResponse<>();
