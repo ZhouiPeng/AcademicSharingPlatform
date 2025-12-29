@@ -286,7 +286,7 @@ public class AchievementServiceImpl implements AchievementService {
                 || containsIgnoreCase(e.getAuthors(), keywordLower)
                 || containsIgnoreCase(e.getAbstractText(), keywordLower))
                 .map(this::toDto)
-                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                .filter(this::keepIfNotReviewed)
                 .collect(Collectors.toList());
     }
 
@@ -315,7 +315,7 @@ public class AchievementServiceImpl implements AchievementService {
                 .filter(e -> matchAuthorsList(e, authors))
                 .filter(e -> matchCategoriesList(e, categories))
                 .map(this::toDto)
-                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                .filter(this::keepIfNotReviewed)
                 .collect(Collectors.toList());
     }
 
@@ -375,7 +375,7 @@ public class AchievementServiceImpl implements AchievementService {
     public List<AchievementDto> listByFolder(String folderId) {
         return achievementRepository.findByFolders_Id(folderId).stream()
                 .map(this::toDto)
-                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                .filter(this::keepIfNotReviewed)
                 .collect(Collectors.toList());
     }
 
@@ -485,7 +485,7 @@ public class AchievementServiceImpl implements AchievementService {
                 String uname = name == null ? null : name.trim();
                 if (uname == null || uname.isEmpty()) return new com.academic.achievement.dto.AuthorView(uname, null);
                 String cached = usernameCache.get(uname);
-                if (cached != null) return new com.academic.achievement.dto.AuthorView(uname, cached);
+                if (cached != null) return new com.academic.achievement.dto.AuthorView(uname, cached.isEmpty() ? null : cached);
                 try {
                     // call user-service lookup endpoint
                     java.util.Map resp = this.userWebClient.get()
@@ -495,14 +495,15 @@ public class AchievementServiceImpl implements AchievementService {
                             .block();
                     if (resp != null && resp.get("data") instanceof java.util.Map) {
                         Object uid = ((java.util.Map) resp.get("data")).get("userId");
-                        String uids = uid == null ? null : String.valueOf(uid);
+                        String uids = uid == null ? "" : String.valueOf(uid);
                         usernameCache.put(uname, uids);
-                        return new com.academic.achievement.dto.AuthorView(uname, uids);
+                        return new com.academic.achievement.dto.AuthorView(uname, uids.isEmpty() ? null : uids);
                     }
                 } catch (Exception ex) {
                     // ignore, fallback to null userId
                 }
-                usernameCache.put(uname, null);
+                // store empty string as sentinel for "unknown" to avoid null values in ConcurrentHashMap
+                usernameCache.putIfAbsent(uname, "");
                 return new com.academic.achievement.dto.AuthorView(uname, null);
             }).collect(Collectors.toList());
             d.setAuthorsView(av);
@@ -568,6 +569,17 @@ public class AchievementServiceImpl implements AchievementService {
             return false;
         }
         return source.toLowerCase().contains(keywordLower);
+    }
+
+    private boolean keepIfNotReviewed(AchievementDto d) {
+        if (d == null || d.getId() == null) return false;
+        try {
+            return !searchFromReview(d.getId());
+        } catch (Exception ex) {
+            logger.warn("searchFromReview failed for {}: {}", d.getId(), ex.getMessage());
+            // on error, keep the item instead of failing the whole request
+            return true;
+        }
     }
 
     private boolean matchKeywords(AchievementEntity entity, String keyword) {
