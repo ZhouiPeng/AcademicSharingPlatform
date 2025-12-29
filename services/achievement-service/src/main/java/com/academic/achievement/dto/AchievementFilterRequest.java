@@ -18,6 +18,8 @@ public class AchievementFilterRequest {
     private List<String> categories;
     private Integer pageNum;
     private Integer pageSize;
+    private String sortBy;
+    private String order;
 
     public String getKeywords() {
         return keywords;
@@ -38,6 +40,8 @@ public class AchievementFilterRequest {
     public Integer getFromYear() {
         return fromYear;
     }
+
+
 
     public void setFromYear(Integer fromYear) {
         this.fromYear = fromYear;
@@ -115,5 +119,21 @@ public class AchievementFilterRequest {
 
     public void setPageSize(Integer pageSize) {
         this.pageSize = pageSize;
+    }
+
+    public String getSortBy() {
+        return sortBy;
+    }
+
+    public void setSortBy(String sortBy) {
+        this.sortBy = sortBy;
+    }
+
+    public String getOrder() {
+        return order;
+    }
+
+    public void setOrder(String order) {
+        this.order = order;
     }
 }

@@ -30,7 +30,9 @@ public interface AchievementService {
 
     List<AchievementDto> search(String q);
 
-    List<AchievementDto> filter(AchievementFilterRequest filterRequest);
+    List<AchievementDto> search(String q, String sortBy, String order);
+
+    List<AchievementDto> filter(AchievementFilterRequest filterRequest, String sortBy, String order);
 
     List<AchievementDto> listByCategory(String catId);
 
