@@ -187,6 +187,22 @@ public class UserController {
         }
     }
 
+        @Operation(summary = "按用户名查找用户（仅返回基础信息，内部调用）")
+        @GetMapping("/lookup/{username}")
+        @ResponseBody
+        public ResponseEntity<ApiResponse<User>> lookupByUsername(@PathVariable String username) {
+                ApiResponse<User> apiResponse = new ApiResponse<>();
+                try {
+                        User user = userService.getByUsername(username);
+                        return ResponseEntity.ok().body(apiResponse.success("ok", user));
+                } catch (ServiceError e) {
+                        return ResponseEntity.badRequest().body(apiResponse.fail(e.getCode(), e.getMsg()));
+                } catch (Exception e) {
+                        logger.error("lookup by username failed: {}", username, e);
+                        return ResponseEntity.internalServerError().body(apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
+                }
+        }
+
     //修改当前用户信息
     @Operation(summary = "修改当前用户信息")
     @ApiResponses(value = {

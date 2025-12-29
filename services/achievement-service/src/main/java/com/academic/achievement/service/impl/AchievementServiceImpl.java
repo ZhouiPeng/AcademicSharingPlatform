@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import com.academic.achievement.dto.AchievementDto;
 import com.academic.achievement.dto.AchievementFilterRequest;
@@ -31,11 +32,14 @@ public class AchievementServiceImpl implements AchievementService {
     private final StringRedisTemplate redis;
 
     private final DefaultRedisScript<Long> decrIfPositiveScript;
+    private final WebClient userWebClient;
+    // simple per-service cache to avoid repeated remote lookups in same JVM call
+    private final java.util.concurrent.ConcurrentHashMap<String, String> usernameCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Defensive limit to avoid MySQL Data truncation when schema uses VARCHAR(255)
     private static final int AUTHORS_MAX_LEN = 255;
 
-    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, ReviewRepository reviewRepository, StringRedisTemplate redis) {
+    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, ReviewRepository reviewRepository, StringRedisTemplate redis, WebClient.Builder webClientBuilder) {
         this.achievementRepository = achievementRepository;
         this.folderRepository = folderRepository;
         this.reviewRepository = reviewRepository;
@@ -43,6 +47,7 @@ public class AchievementServiceImpl implements AchievementService {
         this.decrIfPositiveScript = new DefaultRedisScript<>();
         this.decrIfPositiveScript.setScriptText("local v = redis.call('get', KEYS[1]); if (not v) or (tonumber(v) <= 0) then return tonumber(v) or 0; else return redis.call('decr', KEYS[1]); end");
         this.decrIfPositiveScript.setResultType(Long.class);
+        this.userWebClient = webClientBuilder.baseUrl("http://user-service:8081").build();
     }
 
     @Override
@@ -151,7 +156,7 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public CollectionFolderDto createFolder(CollectionFolderDto dto) {
+    public CollectionFolderDto createFolder(CollectionFolderDto dto, String ownerId) {
         FolderEntity f = new FolderEntity();
         if (dto.getId() == null || dto.getId().isEmpty()) {
             f.setId("folder-" + System.currentTimeMillis());
@@ -160,6 +165,7 @@ public class AchievementServiceImpl implements AchievementService {
         }
         f.setName(dto.getName());
         f.setDescription(dto.getDescription());
+        f.setOwnerId(ownerId);
         FolderEntity saved = folderRepository.save(f);
         CollectionFolderDto out = new CollectionFolderDto();
         out.setId(saved.getId());
@@ -178,10 +184,20 @@ public class AchievementServiceImpl implements AchievementService {
         AchievementEntity a = optA.get();
         FolderEntity f = optF.get();
         a.getFolders().add(f);
-        // persist relation change immediately, but keep counter in Redis
+        // persist relation change immediately
         achievementRepository.save(a);
         String key = String.format("achievement:%s:collects", achId);
-        redis.opsForValue().increment(key, 1);
+        try {
+            redis.opsForValue().increment(key, 1);
+        } catch (Exception ex) {
+            // Redis unavailable: fallback to update DB counter directly
+            try {
+                Integer curr = a.getCollectCount();
+                a.setCollectCount(curr == null ? 1 : curr + 1);
+                achievementRepository.save(a);
+            } catch (Exception ignore) {
+            }
+        }
     }
 
     @Override
@@ -194,10 +210,22 @@ public class AchievementServiceImpl implements AchievementService {
         AchievementEntity a = optA.get();
         FolderEntity f = optF.get();
         a.getFolders().remove(f);
-        // persist relation change immediately, but decrement counter in Redis only
+        // persist relation change immediately
         achievementRepository.save(a);
         String key = String.format("achievement:%s:collects", achId);
-        redis.execute(decrIfPositiveScript, Collections.singletonList(key));
+        try {
+            redis.execute(decrIfPositiveScript, Collections.singletonList(key));
+        } catch (Exception ex) {
+            // Redis unavailable: fallback to update DB counter directly (ensure non-negative)
+            try {
+                Integer curr = a.getCollectCount();
+                int next = (curr == null ? 0 : curr) - 1;
+                if (next < 0) next = 0;
+                a.setCollectCount(next);
+                achievementRepository.save(a);
+            } catch (Exception ignore) {
+            }
+        }
     }
 
     @Override
@@ -218,8 +246,14 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public List<CollectionFolderDto> listCollections() {
-        return folderRepository.findAll().stream().map(f -> {
+    public List<CollectionFolderDto> listCollections(String ownerId) {
+        java.util.List<FolderEntity> folders;
+        if (ownerId == null || ownerId.isBlank()) {
+            folders = folderRepository.findAll();
+        } else {
+            folders = folderRepository.findByOwnerId(ownerId);
+        }
+        return folders.stream().map(f -> {
             CollectionFolderDto dto = new CollectionFolderDto();
             dto.setId(f.getId());
             dto.setName(f.getName());
@@ -255,14 +289,71 @@ public class AchievementServiceImpl implements AchievementService {
         Integer fromYear = criteria.getFromYear();
         Integer toYear = criteria.getToYear();
 
+        String title = criteria.getTitle() == null ? null : criteria.getTitle().trim();
+        String userId = criteria.getUserId() == null ? null : criteria.getUserId().trim();
+        String fileId = criteria.getFileId() == null ? null : criteria.getFileId().trim();
+        Integer type = criteria.getType();
+        java.util.List<String> authors = criteria.getAuthors();
+        java.util.List<String> categories = criteria.getCategories();
         return achievementRepository.findAll().stream()
                 .filter(e -> matchKeywords(e, keyword))
                 .filter(e -> matchClassification(e, classification))
                 .filter(e -> matchYearRange(e, fromYear, toYear))
+            .filter(e -> matchTitle(e, title))
+                .filter(e -> matchUserId(e, userId))
+                .filter(e -> matchFileId(e, fileId))
+                .filter(e -> matchType(e, type))
+                .filter(e -> matchAuthorsList(e, authors))
+                .filter(e -> matchCategoriesList(e, categories))
                 .map(this::toDto)
                 .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
                 .collect(Collectors.toList());
     }
+
+    private boolean matchTitle(AchievementEntity e, String title) {
+        if (title == null || title.isEmpty()) return true;
+        return containsIgnoreCase(e.getTitle(), title.toLowerCase());
+    }
+
+    private boolean matchUserId(AchievementEntity e, String userId) {
+        if (userId == null || userId.isEmpty()) return true;
+        String uid = e.getAuthorId();
+        return uid != null && uid.equals(userId);
+    }
+
+    private boolean matchFileId(AchievementEntity e, String fileId) {
+        if (fileId == null || fileId.isEmpty()) return true;
+        String fid = e.getFileId();
+        return fid != null && fid.equals(fileId);
+    }
+
+    private boolean matchType(AchievementEntity e, Integer type) {
+        if (type == null) return true;
+        return e.getType() != null && e.getType().equals(type);
+    }
+
+    private boolean matchAuthorsList(AchievementEntity e, java.util.List<String> authors) {
+        if (authors == null || authors.isEmpty()) return true;
+        if (e.getAuthors() == null || e.getAuthors().isEmpty()) return false;
+        java.util.Set<String> existing = java.util.Arrays.stream(e.getAuthors().split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
+        for (String a : authors) {
+            if (existing.contains(a)) return true;
+        }
+        return false;
+    }
+
+    private boolean matchCategoriesList(AchievementEntity e, java.util.List<String> categories) {
+        if (categories == null || categories.isEmpty()) return true;
+        if (e.getCategories() == null || e.getCategories().isEmpty()) return false;
+        java.util.Set<String> existing = java.util.Arrays.stream(e.getCategories().split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
+        for (String c : categories) {
+            if (existing.contains(c)) return true;
+        }
+        return false;
+    }
+    
 
     @Override
     public List<AchievementDto> listByCategory(String catId) {
@@ -332,7 +423,34 @@ public class AchievementServiceImpl implements AchievementService {
         d.setUserId(e.getAuthorId());
         d.setFileId(e.getFileId());
         if (e.getAuthors() != null && !e.getAuthors().isEmpty()) {
-            d.setAuthors(List.of(e.getAuthors().split(",")));
+            java.util.List<String> raw = java.util.List.of(e.getAuthors().split(","));
+            d.setAuthors(raw);
+            // build presentation view by resolving username -> userId via user-service
+            java.util.List<com.academic.achievement.dto.AuthorView> av = raw.stream().map(name -> {
+                String uname = name == null ? null : name.trim();
+                if (uname == null || uname.isEmpty()) return new com.academic.achievement.dto.AuthorView(uname, null);
+                String cached = usernameCache.get(uname);
+                if (cached != null) return new com.academic.achievement.dto.AuthorView(uname, cached);
+                try {
+                    // call user-service lookup endpoint
+                    java.util.Map resp = this.userWebClient.get()
+                            .uri(uriBuilder -> uriBuilder.path("/api/users/lookup/{username}").build(uname))
+                            .retrieve()
+                            .bodyToMono(java.util.Map.class)
+                            .block();
+                    if (resp != null && resp.get("data") instanceof java.util.Map) {
+                        Object uid = ((java.util.Map) resp.get("data")).get("userId");
+                        String uids = uid == null ? null : String.valueOf(uid);
+                        usernameCache.put(uname, uids);
+                        return new com.academic.achievement.dto.AuthorView(uname, uids);
+                    }
+                } catch (Exception ex) {
+                    // ignore, fallback to null userId
+                }
+                usernameCache.put(uname, null);
+                return new com.academic.achievement.dto.AuthorView(uname, null);
+            }).collect(Collectors.toList());
+            d.setAuthorsView(av);
         }
         if (e.getCategories() != null && !e.getCategories().isEmpty()) {
             d.setCategories(List.of(e.getCategories().split(",")));

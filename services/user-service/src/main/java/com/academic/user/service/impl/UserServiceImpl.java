@@ -90,6 +90,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User getByUsername(String username) throws ServiceError {
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+        User user = userMapper.selectOneByUserName(username);
+        return user; // may be null if not found
+    }
+
+    @Override
     public void updateCurrent(User user) throws ServiceError {
         user.setUpdatedAt(LocalDateTime.now());
         int r = userMapper.updateUser(user);
