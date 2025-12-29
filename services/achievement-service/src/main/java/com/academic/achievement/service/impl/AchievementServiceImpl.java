@@ -8,8 +8,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -20,17 +25,16 @@ import com.academic.achievement.entity.AchievementEntity;
 import com.academic.achievement.entity.FolderEntity;
 import com.academic.achievement.repository.AchievementRepository;
 import com.academic.achievement.repository.FolderRepository;
-import com.academic.achievement.repository.ReviewRepository;
 import com.academic.achievement.service.AchievementService;
+
+import reactor.core.publisher.Mono;
 
 @Service
 public class AchievementServiceImpl implements AchievementService {
 
     private final AchievementRepository achievementRepository;
     private final FolderRepository folderRepository;
-    private final ReviewRepository reviewRepository;
     private final StringRedisTemplate redis;
-
     private final DefaultRedisScript<Long> decrIfPositiveScript;
     private final WebClient userWebClient;
     // simple per-service cache to avoid repeated remote lookups in same JVM call
@@ -38,20 +42,22 @@ public class AchievementServiceImpl implements AchievementService {
 
     // Defensive limit to avoid MySQL Data truncation when schema uses VARCHAR(255)
     private static final int AUTHORS_MAX_LEN = 255;
+    private final WebClient adminWebClient;
+    private static final Logger logger = LoggerFactory.getLogger(AchievementServiceImpl.class);
 
-    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, ReviewRepository reviewRepository, StringRedisTemplate redis, WebClient.Builder webClientBuilder) {
+    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, StringRedisTemplate redis, WebClient.Builder webClientBuilder, @Value("http://admin-service:8085") String adminServiceUrl) {
         this.achievementRepository = achievementRepository;
         this.folderRepository = folderRepository;
-        this.reviewRepository = reviewRepository;
         this.redis = redis;
         this.decrIfPositiveScript = new DefaultRedisScript<>();
         this.decrIfPositiveScript.setScriptText("local v = redis.call('get', KEYS[1]); if (not v) or (tonumber(v) <= 0) then return tonumber(v) or 0; else return redis.call('decr', KEYS[1]); end");
         this.decrIfPositiveScript.setResultType(Long.class);
         this.userWebClient = webClientBuilder.baseUrl("http://user-service:8081").build();
+        this.adminWebClient = WebClient.builder().baseUrl(adminServiceUrl).build();
     }
 
     @Override
-    public String upload(AchievementDto dto) {
+    public String upload(AchievementDto dto, String userRoleHeader) {
         // duplicate detection: same title AND (same userId OR overlapping authors)
         String title = dto.getTitle() == null ? "" : dto.getTitle().trim();
         if (!title.isEmpty()) {
@@ -88,6 +94,9 @@ public class AchievementServiceImpl implements AchievementService {
             e.setCreatedAt(System.currentTimeMillis());
         }
         achievementRepository.save(e);
+        if (!userRoleHeader.equals("ADMIN")) {
+            applyReview(e.getId(), dto.getUserId());
+        }
         return e.getId();
     }
 
@@ -398,22 +407,68 @@ public class AchievementServiceImpl implements AchievementService {
         return list;
     }
 
-    @Override
-    public void insertReviewEntity(String achId, String userId) {
-        reviewRepository.insertReviewEntity(achId, userId);
+    private void applyReview(String achId, String userId) {
+        try {
+            java.util.Map<String, String> body = java.util.Collections.singletonMap("achievementId", achId);
+            adminWebClient.post()
+                    .uri("/api/admin/achievement")
+                    .header("X-User-Id", userId == null ? "" : userId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .onErrorResume(e -> {
+                        logger.warn("applyReview failed for {}: {}", achId, e.getMessage());
+                        return Mono.empty();
+                    })
+                    .subscribe();
+        } catch (Exception ex) {
+            logger.warn("applyReview invocation failed for {}: {}", achId, ex.getMessage());
+        }
     }
 
     @Override
-    public List<AchievementDto> getReviews() {
-        List<AchievementDto> result = reviewRepository.findAll().stream()
-                .map(review -> {
-                    String achId = review.getAchId();
-                    Optional<AchievementEntity> opt = achievementRepository.findById(achId);
-                    return opt.map(this::toDto).orElse(null);
-                })
-                .filter(dto -> dto != null)
-                .collect(Collectors.toList());
-        return result;
+    public Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader, String userRoleHeader) {
+        ParameterizedTypeReference<java.util.Map<String, Object>> typeRef = new ParameterizedTypeReference<>() {
+        };
+        return adminWebClient.get()
+                .uri("/api/admin/achievement")
+                .header("X-User-Id", userIdHeader == null ? "" : userIdHeader)
+                .header("X-User-Role", userRoleHeader == null ? "" : userRoleHeader)
+                .retrieve()
+                .bodyToMono(typeRef)
+                .onErrorReturn(java.util.Collections.emptyMap())
+                .flatMap(resp -> reactor.core.publisher.Mono.fromCallable(() -> {
+            if (resp == null || resp.isEmpty()) {
+                return java.util.Collections.<AchievementDto>emptyList();
+            }
+            Object dataObj = resp.get("data");
+            if (!(dataObj instanceof java.util.List)) {
+                return java.util.Collections.<AchievementDto>emptyList();
+            }
+            @SuppressWarnings("unchecked")
+            java.util.List<Object> dataList = (java.util.List<Object>) dataObj;
+            java.util.List<AchievementDto> out = new java.util.ArrayList<>();
+            for (Object itemObj : dataList) {
+                if (!(itemObj instanceof java.util.Map)) {
+                    continue;
+                }
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> item = (java.util.Map<String, Object>) itemObj;
+                Object achIdObj = item.get("achievementId");
+                if (achIdObj == null) {
+                    continue;
+                }
+                String achId = String.valueOf(achIdObj);
+                if (achId.isBlank()) {
+                    continue;
+                }
+                Optional<AchievementEntity> opt = achievementRepository.findById(achId);
+                opt.ifPresent(e -> out.add(toDto(e)));
+            }
+            return out;
+        }).subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic()))
+                .onErrorReturn(java.util.Collections.emptyList());
     }
 
     private AchievementDto toDto(AchievementEntity e) {
@@ -562,6 +617,36 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     private Boolean searchFromReview(String achId) {
-        return reviewRepository.existsByAchId(achId);
+        if (achId == null || achId.isBlank()) {
+            return false;
+        }
+        try {
+            java.util.Map<String, String> body = java.util.Collections.singletonMap("achievementId", achId);
+            ParameterizedTypeReference<java.util.Map<String, Object>> typeRef = new ParameterizedTypeReference<>() {
+            };
+            java.util.Map<String, Object> resp = adminWebClient.method(org.springframework.http.HttpMethod.GET)
+                    .uri("/api/admin/achievement/check")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(typeRef)
+                    .onErrorReturn(java.util.Collections.emptyMap())
+                    .block();
+
+            if (resp == null || resp.isEmpty()) {
+                return false;
+            }
+            Object dataObj = resp.get("data");
+            if (!(dataObj instanceof java.util.Map)) {
+                return false;
+            }
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> data = (java.util.Map<String, Object>) dataObj;
+            Object status = data.get("status");
+            return status != null;
+        } catch (Exception ex) {
+            logger.warn("searchFromReview failed for {}: {}", achId, ex.getMessage());
+            return false;
+        }
     }
 }

@@ -16,6 +16,9 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import reactor.core.publisher.Mono;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Validated
 @RestController
@@ -46,11 +49,10 @@ public class AdminController {
 
     @PutMapping("/authentication/{formId}")
     @Operation(summary = "处理认证申请")
-    public ResponseEntity<ApiResponse<Map<String, String>>> processAuthentication(
+    public ResponseEntity<ApiResponse<ProcessDto>> processAuthentication(
             @PathVariable @NotBlank String formId,
             @RequestBody @Valid ProcessRequest requestBody) {
-        String status = adminService.processAuthentication(formId, requestBody);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
+        return ResponseEntity.ok(ApiResponse.success(adminService.processAuthentication(formId, requestBody)));
     }
 
     @PostMapping("/report")
@@ -70,11 +72,10 @@ public class AdminController {
 
     @PutMapping("/report/{reportId}")
     @Operation(summary = "处理举报")
-    public ResponseEntity<ApiResponse<Map<String, String>>> processReport(
+    public ResponseEntity<ApiResponse<ProcessDto>> processReport(
             @PathVariable @NotBlank String reportId,
             @RequestBody @Valid ProcessRequest req) {
-        String status = adminService.processReport(reportId, req);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
+        return ResponseEntity.ok(ApiResponse.success(adminService.processReport(reportId, req)));
     }
 
     @PostMapping("/information")
@@ -114,5 +115,41 @@ public class AdminController {
     @Operation(summary = "获取系统消息列表")
     public ResponseEntity<ApiResponse<List<InformationDto>>> getInformation(@RequestHeader(name = "X-User-Id") String userIdHeader) {
         return ResponseEntity.ok(ApiResponse.success(adminService.getInformation(userIdHeader)));
+    }
+
+    @PostMapping("/achievement")
+    @Operation(summary = "申请审核成果（微服务间通信，前端不需调用)")
+    public Mono<ResponseEntity<ApiResponse<Map<String, String>>>> applyAchievement(
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
+            @RequestBody @Valid AchievementRequest req) {
+        return adminService.applyAchievement(userIdHeader, req.getAchievementId())
+                .map(status -> ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status))));
+    }
+
+    @GetMapping("/achievement")
+    @Operation(summary = "获取待审核成果列表")
+    public ResponseEntity<ApiResponse<List<AchievementDto>>> getAchievement(
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
+            @RequestHeader(name = "X-User-Role") String userRoleHeader) {
+        if (userRoleHeader.equals("ADMIN")) {
+            return ResponseEntity.ok(ApiResponse.success(adminService.getAchievementReview(userIdHeader)));
+        } else {
+            return ResponseEntity.ok(ApiResponse.success(adminService.getAchievement(userIdHeader)));
+        }
+
+    }
+
+    @GetMapping("/achievement/check")
+    @Operation(summary = "查看成果状态(前端不调用)")
+    public ResponseEntity<ApiResponse<Map<String, String>>> checkAchievement(@RequestBody @Valid AchievementRequest req) {
+        return ResponseEntity.ok(ApiResponse.success(Map.of("status", adminService.checkAchievement(req.getAchievementId()))));
+    }
+
+    @PutMapping("/achievement/{id}")
+    @Operation(summary = "处理成果审核")
+    public ResponseEntity<ApiResponse<ProcessDto>> processAchievement(
+            @PathVariable @NotBlank String id,
+            @RequestBody @Valid ProcessRequest req) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.processAchievement(id, req)));
     }
 }
