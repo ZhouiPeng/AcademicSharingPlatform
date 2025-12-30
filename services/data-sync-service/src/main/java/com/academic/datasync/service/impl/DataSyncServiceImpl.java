@@ -72,7 +72,7 @@ public class DataSyncServiceImpl implements DataSyncService { // 实现 DataSync
     };
 
     // 自动爬取相关配置（从 application.yml 注入）
-    @Value("${datasync.auto-enabled:false}")
+    @Value("${datasync.auto-enabled:true}")
     private boolean autoCrawlEnabled; // 开关：为 true 时启用定时爬取
 
     @Value("${datasync.per-category-count:100}")

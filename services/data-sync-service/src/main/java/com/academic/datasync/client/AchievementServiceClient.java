@@ -30,6 +30,7 @@ public class AchievementServiceClient {
         return webClient.post()
                 .uri("/api/achievements")
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-User-Role", "ADMIN")
                 .bodyValue(jsonPayload)
                 .retrieve()
                 .onStatus(status -> !status.is2xxSuccessful(), clientResponse -> clientResponse.bodyToMono(String.class)
