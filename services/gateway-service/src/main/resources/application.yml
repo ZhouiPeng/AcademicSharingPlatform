@@ -13,6 +13,14 @@ spring:
             - Path=/api/users/login,
                    /api/users/normal/register/**,
                    /api/users/verification/send
+        - id: user-search
+          uri: http://achievement-service:8082
+          predicates:
+            - Path=/api/achievements/filter,
+                    /api/achievements/search,
+                    /api/achievements/search/sort,
+                    /api/achievements/category/**,
+                    /api/achievements/author/**
 
         # secured routes
         - id: user-service

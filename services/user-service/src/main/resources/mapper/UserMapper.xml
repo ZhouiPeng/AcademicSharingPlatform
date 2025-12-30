@@ -70,6 +70,9 @@
             <if test="passwordHash != null and passwordHash != ''">
                 password_hash = #{passwordHash},
             </if>
+            <if test="role != null and role != null">
+                role = #{role},
+            </if>
         </trim>
         <where>
             user_id = #{userId};

@@ -114,9 +114,10 @@ public class UserServiceImpl implements UserService {
         if (userId != null) {
             User user = userMapper.selectOneByUserId(userId);
             mail = user.getEmail();
-        }
-//        System.out.println("邮箱："+ mail);
-        validateId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
+            validateId = userId;
+        } else {
+            validateId = String.format("%04d", ThreadLocalRandom.current().nextInt(1000, 10000));
+        }  
 
         // allow request to provide an alternate mail address; fall back to user's email
         // if client provided a verification code in request, use it; otherwise generate one
@@ -254,5 +255,25 @@ public class UserServiceImpl implements UserService {
     @Override
     public int getUsersNum() {
         return userMapper.count();
+    }
+
+    @Override
+    public void setRole(String userId, String role) throws ServiceError {
+        User user = userMapper.selectOneByUserId(userId);
+        if (user == null) {
+            throw new ServiceError("用户不存在", 0);
+        }
+        if (role.equals(Role.ADMIN.toString())) {
+            user.setRole(Role.ADMIN);
+        } else if (role.equals(Role.NORMAL.toString())) {
+            user.setRole(Role.NORMAL);
+        } else {
+            throw new ServiceError("角色不存在(\"RESEARCHER\"或\"NORMAL\"或\"ADMIN\")", 0);
+        }
+        user.setUpdatedAt(LocalDateTime.now());
+        int r = userMapper.updateUser(user);
+        if (r == 0) {
+            throw new ServiceError("修改失败", 0);
+        }
     }
 }

@@ -8,7 +8,7 @@ public class ResultCode
     final public static int TOKEN_IS_NOT_SUPPORT = -103;
     final public static int TOKEN_IS_NULL = -104;
     final public static int TOKEN_IS_INVALID = -105;
-
+    final public static int PERMISSION_DENYED = -106;
     final public static int SERVICE_NOT_COMPLETTE = -201;
     final public static int UNKNOWN_ERROR = -302;
 }

@@ -129,20 +129,17 @@ public class AdminController {
     @GetMapping("/achievement")
     @Operation(summary = "获取待审核成果列表")
     public ResponseEntity<ApiResponse<List<AchievementDto>>> getAchievement(
-            @RequestHeader(name = "X-User-Id") String userIdHeader,
-            @RequestHeader(name = "X-User-Role") String userRoleHeader) {
-        if (userRoleHeader.equals("ADMIN")) {
-            return ResponseEntity.ok(ApiResponse.success(adminService.getAchievementReview(userIdHeader)));
-        } else {
-            return ResponseEntity.ok(ApiResponse.success(adminService.getAchievement(userIdHeader)));
-        }
-
+        @RequestHeader(name = "X-User-Id") String userIdHeader,
+        @RequestHeader(name = "X-User-Role") String userRoleHeader) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getAchievement(userIdHeader, userRoleHeader)));
     }
 
     @GetMapping("/achievement/check")
-    @Operation(summary = "查看成果状态(前端不调用)")
-    public ResponseEntity<ApiResponse<Map<String, String>>> checkAchievement(@RequestBody @Valid AchievementRequest req) {
-        return ResponseEntity.ok(ApiResponse.success(Map.of("status", adminService.checkAchievement(req.getAchievementId()))));
+    @Operation(summary = "查看成果状态(微服务间通信，前端不调用)")
+    public ResponseEntity<ApiResponse<Map<String, String>>> checkAchievement(
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
+            @RequestBody @Valid AchievementRequest req) {
+        return ResponseEntity.ok(ApiResponse.success(Map.of("status", adminService.checkAchievement(userIdHeader, req.getAchievementId()))));
     }
 
     @PutMapping("/achievement/{id}")

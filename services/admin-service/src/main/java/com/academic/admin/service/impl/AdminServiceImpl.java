@@ -381,16 +381,22 @@ public class AdminServiceImpl implements AdminService {
         return assignedAdmin()
                 .switchIfEmpty(Mono.error(new IllegalStateException("no assigned admin found")))
                 .flatMap(assignedAdmin -> {
-                    AchievementEntity r = AchievementEntity.builder()
-                            .id(UUID.randomUUID().toString())
-                            .proceedingAdminId(assignedAdmin)
-                            .userId(userId)
-                            .achievementId(achievementId)
-                            .status(status)
-                            .build();
-
-                    return Mono.fromCallable(() -> achievementRepository.save(r))
-                            .subscribeOn(Schedulers.boundedElastic())
+                    return Mono.fromCallable(() -> {
+                        AchievementEntity existing = achievementRepository.findByUserIdAndAchievementId(userId, achievementId);
+                        if (existing != null) {
+                            existing.setProceedingAdminId(assignedAdmin);
+                            existing.setStatus(status);
+                            return achievementRepository.save(existing);
+                        }
+                        AchievementEntity r = AchievementEntity.builder()
+                                .id(UUID.randomUUID().toString())
+                                .proceedingAdminId(assignedAdmin)
+                                .userId(userId)
+                                .achievementId(achievementId)
+                                .status(status)
+                                .build();
+                        return achievementRepository.save(r);
+                    }).subscribeOn(Schedulers.boundedElastic())
                             .flatMap(saved -> {
                                 SendInfoRequest info = new SendInfoRequest();
                                 info.setTargetGroup(assignedAdmin);
@@ -402,35 +408,19 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public List<AchievementDto> getAchievementReview(String userId) {
-        List<AchievementEntity> ents = achievementRepository.findByProceedingAdminIdOrderByCreatedAtDesc(userId);
-        if (ents == null || ents.isEmpty()) {
-            throw new IllegalStateException("no achievements found" + userId);
+    public List<AchievementDto> getAchievement(String id, String role) {
+        List<AchievementEntity> ents = null;
+        if (role.equals("ADMIN")) {
+            ents = achievementRepository.findByProceedingAdminIdOrderByCreatedAtDesc(id);
+        } else {
+            ents = achievementRepository.findByUserIdOrderByCreatedAtDesc(id);
         }
-        List<AchievementDto> res = new ArrayList<>(ents.size());
+        List<AchievementDto> res = new ArrayList<>(ents == null ? 0 : ents.size());
         for (AchievementEntity e : ents) {
             String st = e.getStatus();
             if (st == null || !"PENDING".equalsIgnoreCase(st)) {
                 continue;
             }
-            AchievementDto d = AchievementDto.builder()
-                    .id(e.getId())
-                    .achievementId(e.getAchievementId())
-                    .createdAt(e.getCreatedAt().toString())
-                    .build();
-            res.add(d);
-        }
-        return res;
-    }
-
-    @Override
-    public List<AchievementDto> getAchievement(String userId) {
-        List<AchievementEntity> ents = achievementRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        if (ents == null || ents.isEmpty()) {
-            throw new IllegalStateException("no achievements found" + userId);
-        }
-        List<AchievementDto> res = new ArrayList<>(ents.size());
-        for (AchievementEntity e : ents) {
             AchievementDto d = AchievementDto.builder()
                     .id(e.getId())
                     .achievementId(e.getAchievementId())
@@ -457,8 +447,8 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public String checkAchievement(String achievementId) {
-        AchievementEntity ent = achievementRepository.findById(achievementId).orElse(null);
+    public String checkAchievement(String userId, String achievementId) {
+        AchievementEntity ent = achievementRepository.findByUserIdAndAchievementId(userId, achievementId);
         if (ent != null && ent.getStatus().equals("PENDING")) {
             return "PENDING";
         }

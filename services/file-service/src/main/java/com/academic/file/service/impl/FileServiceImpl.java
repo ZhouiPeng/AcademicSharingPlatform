@@ -68,8 +68,8 @@ public class FileServiceImpl implements FileService {
             entity.getType(),
             entity.getName(),
             entity.getSize(),
-            entity.getUrl(),
             entity.getUploaderId(),
+            entity.getUrl(),
             entity.getCreatedAt().toString(),
             entity.getUpdatedAt().toString(),
             null

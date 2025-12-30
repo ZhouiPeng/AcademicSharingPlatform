@@ -18,7 +18,7 @@ public interface AchievementService {
 
     List<AchievementDto> listByAuthor(String authorId);
 
-    CollectionFolderDto createFolder(CollectionFolderDto dto, String ownerId);
+    CollectionFolderDto createFolder(CollectionFolderDto dto);
 
     void collect(String achId, String folderId);
 
@@ -26,7 +26,7 @@ public interface AchievementService {
 
     void deleteFolder(String folderId);
 
-    List<CollectionFolderDto> listCollections(String ownerId);
+    List<CollectionFolderDto> listCollections();
 
     List<AchievementDto> search(String q);
 
@@ -42,5 +42,5 @@ public interface AchievementService {
 
     List<AchievementDto> searchWithSort(String sortBy, String order);
 
-    reactor.core.publisher.Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader, String userRoleHeader);
+    reactor.core.publisher.Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader);
 }

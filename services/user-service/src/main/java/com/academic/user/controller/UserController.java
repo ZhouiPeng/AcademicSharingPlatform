@@ -187,7 +187,7 @@ public class UserController {
         }
     }
 
-        @Operation(summary = "按用户名查找用户（仅返回基础信息，内部调用）")
+        @Operation(summary = "按用户名查找用户（仅返回基础信息）")
         @GetMapping("/lookup/{username}")
         @ResponseBody
         public ResponseEntity<ApiResponse<User>> lookupByUsername(@PathVariable String username) {
@@ -244,20 +244,18 @@ public class UserController {
     })
     @PostMapping("/verification/send")
     @ResponseBody
-    public ResponseEntity<ApiResponse<VerificationResponseModel>> registerValidation(
-            @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
-            @RequestBody(required = false) VerificationRequestModel verificationRequestModel) {
+    public ResponseEntity<ApiResponse<VerificationResponseModel>> registerValidation(@RequestBody VerificationRequestModel verificationRequestModel) {
         ApiResponse<VerificationResponseModel> apiResponse = new ApiResponse<>();
         VerificationResponseModel verificationResponseModel = new VerificationResponseModel();
         try {
-            if (userIdHeader != null && !userIdHeader.isEmpty()) {
-                String validateId = userService.generateVerificationCode(userIdHeader, null);
-                verificationResponseModel.setValidateId(validateId);
-                return ResponseEntity.ok().body(
-                        apiResponse.success("验证码已发送，请检查邮箱", verificationResponseModel));
-            } else if (verificationRequestModel == null) {
+            if(verificationRequestModel == null) {
                 return ResponseEntity.badRequest().body(
                         apiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "请求体不能为空"));
+            }
+            if (verificationRequestModel.getUserId() != null && !verificationRequestModel.getUserId().isEmpty()) {
+                userService.generateVerificationCode(verificationRequestModel.getUserId(), null);
+                return ResponseEntity.ok().body(
+                        apiResponse.success("验证码已发送，请检查邮箱", null));
             }
             if (verificationRequestModel.getEmail() == null
                     || verificationRequestModel.getEmail().isEmpty()) {
@@ -291,14 +289,14 @@ public class UserController {
                 content = @Content(mediaType = "application/json",
                         examples = @ExampleObject(value = "{\"code\":1,\"msg\":\"修改成功\",\"data\":null,\"timestamp\":1735286400000}")))
     })
-    @PostMapping("/password/reset/{validateId}")
+    @PostMapping("/password/reset")
     @ResponseBody
     public ResponseEntity<ApiResponse<Object>> resetPassword(
             @RequestHeader(name = "X-User-Id") String userIdHeader,
-            @PathVariable String validateId, @RequestBody ResetRequestModel resetRequestModel) {
+            @RequestBody ResetRequestModel resetRequestModel) {
         ApiResponse<Object> apiResponse = new ApiResponse<>();
         try {
-            userService.validateVerificationCode(validateId, resetRequestModel.getCode());
+            userService.validateVerificationCode(userIdHeader, resetRequestModel.getCode());
             userService.resetPassword(userIdHeader, Secure.sha256(resetRequestModel.getPassword()));
             return ResponseEntity.ok().body(
                     apiResponse.success("修改成功", null));
@@ -490,6 +488,28 @@ public class UserController {
                     apiResponse.success("获取成功", totalResponseModel));
         } catch (Exception e) {
             logger.error("获取用户总数失败", e);
+            return ResponseEntity.internalServerError().body(
+                    apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
+        }
+    }
+
+    @PutMapping("/users/setRole/{userId}")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<TotalResponseModel>> setRole(
+        @RequestHeader(name = "X-User-Role") String userRoleHeader,
+        @PathVariable String userId,
+        @RequestBody SetRoleRequest setRoleRequest) {
+        ApiResponse<TotalResponseModel> apiResponse = new ApiResponse<>();
+        if (!userRoleHeader.equals("ADMIN")) {
+            return ResponseEntity.status(403).body(
+                    apiResponse.fail(ResultCode.PERMISSION_DENYED, "权限不足"));
+        }
+        try {
+            userService.setRole(userId, setRoleRequest.getRole());
+            return ResponseEntity.ok().body(
+                    apiResponse.success("修改成功", null));
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().body(
                     apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
         }

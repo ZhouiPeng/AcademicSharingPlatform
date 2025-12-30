@@ -220,10 +220,8 @@ public class AchievementController {
     // 收藏相关
     @PostMapping("/folders")
     @Operation(summary = "创建收藏夹")
-    public ResponseEntity<ApiResponse<com.academic.achievement.dto.FolderIdDto>> createFolder(
-            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
-            @RequestBody CollectionFolderDto dto) {
-        CollectionFolderDto created = service.createFolder(dto, userIdHeader);
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.FolderIdDto>> createFolder(@RequestBody CollectionFolderDto dto) {
+        CollectionFolderDto created = service.createFolder(dto);
         com.academic.achievement.dto.FolderIdDto out = new com.academic.achievement.dto.FolderIdDto(created.getId());
         return ResponseEntity.status(201).body(ApiResponse.success(out, "创建成功"));
     }
@@ -266,9 +264,8 @@ public class AchievementController {
 
     @GetMapping("/collections")
     @Operation(summary = "列出所有收藏夹")
-    public ResponseEntity<ApiResponse<java.util.List<CollectionFolderDto>>> listCollections(
-            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
-        return ResponseEntity.ok(ApiResponse.success(service.listCollections(userIdHeader)));
+    public ResponseEntity<ApiResponse<java.util.List<CollectionFolderDto>>> listCollections() {
+        return ResponseEntity.ok(ApiResponse.success(service.listCollections()));
     }
 
     // 检索与筛选
@@ -367,14 +364,13 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(out));
     }
 
-    @GetMapping("/Review")
+    @GetMapping("/review")
     @Operation(summary = "返回所有审核中的成果")
     public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> getReviews(
-            @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
-            @RequestHeader(name = "X-User-Role", required = false) String userRoleHeader,
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
             @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
-        java.util.List<AchievementDto> list = service.getReviews(userIdHeader, userRoleHeader).block();
+        java.util.List<AchievementDto> list = service.getReviews(userIdHeader).block();
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);
         int to = Math.min(total, from + pageSize);
