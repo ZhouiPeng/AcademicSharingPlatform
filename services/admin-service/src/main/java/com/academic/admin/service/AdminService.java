@@ -31,11 +31,9 @@ public interface AdminService {
 
     Mono<String> applyAchievement(String userId, String achievementId);
 
-    List<AchievementDto> getAchievementReview(String userId);
-
     List<AchievementDto> getAchievement(String userId);
 
     ProcessDto processAchievement(String formId, ProcessRequest req);
 
-    String checkAchievement(String achievementId);
+    String checkAchievement(String userId, String achievementId);
 }

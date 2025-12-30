@@ -7,6 +7,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,8 +21,8 @@ public class RedisCountsFlushService implements DisposableBean {
     private final StringRedisTemplate redis;
     private final ApplicationContext ctx;
 
-    public RedisCountsFlushService(StringRedisTemplate redis, ApplicationContext ctx) {
-        this.redis = redis;
+    public RedisCountsFlushService(ObjectProvider<StringRedisTemplate> redisProvider, ApplicationContext ctx) {
+        this.redis = redisProvider.getIfAvailable();
         this.ctx = ctx;
     }
 
@@ -45,14 +46,24 @@ public class RedisCountsFlushService implements DisposableBean {
     }
 
     public void flushOnce() {
+        if (redis == null) {
+            logger.warn("No StringRedisTemplate available; skipping Redis flush");
+            return;
+        }
         Set<String> keys = new HashSet<>();
         try {
             Set<String> dks = redis.keys("achievement:*:downloads");
-            if (dks != null) keys.addAll(dks);
+            if (dks != null) {
+                keys.addAll(dks);
+            }
             Set<String> cks = redis.keys("achievement:*:collects");
-            if (cks != null) keys.addAll(cks);
+            if (cks != null) {
+                keys.addAll(cks);
+            }
             Set<String> zks = redis.keys("achievement:*:citeds");
-            if (zks != null) keys.addAll(zks);
+            if (zks != null) {
+                keys.addAll(zks);
+            }
         } catch (Exception ex) {
             logger.warn("Failed to scan redis keys via KEYS; falling back to empty set", ex);
         }
@@ -68,20 +79,24 @@ public class RedisCountsFlushService implements DisposableBean {
         for (String key : keys) {
             try {
                 String[] parts = key.split(":");
-                if (parts.length < 3) continue;
+                if (parts.length < 3) {
+                    continue;
+                }
                 String id = parts[1];
 
                 Method findById = repo.getClass().getMethod("findById", Object.class);
                 java.util.Optional<?> opt = (java.util.Optional<?>) findById.invoke(repo, id);
-                if (opt == null || !opt.isPresent()) continue;
+                if (opt == null || !opt.isPresent()) {
+                    continue;
+                }
                 Object entity = opt.get();
 
                 String downloadsKey = String.format("achievement:%s:downloads", id);
                 String collectsKey = String.format("achievement:%s:collects", id);
-                    String citedsKey = String.format("achievement:%s:citeds", id);
+                String citedsKey = String.format("achievement:%s:citeds", id);
                 String dv = redis.opsForValue().get(downloadsKey);
                 String cv = redis.opsForValue().get(collectsKey);
-                    String zv = redis.opsForValue().get(citedsKey);
+                String zv = redis.opsForValue().get(citedsKey);
 
                 if (dv != null) {
                     try {

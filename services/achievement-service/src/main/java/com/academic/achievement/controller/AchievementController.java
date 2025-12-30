@@ -353,14 +353,13 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(out));
     }
 
-    @GetMapping("/Review")
+    @GetMapping("/review")
     @Operation(summary = "返回所有审核中的成果")
     public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> getReviews(
-            @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
-            @RequestHeader(name = "X-User-Role", required = false) String userRoleHeader,
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
             @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
             @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
-        java.util.List<AchievementDto> list = service.getReviews(userIdHeader, userRoleHeader).block();
+        java.util.List<AchievementDto> list = service.getReviews(userIdHeader).block();
         int total = list.size();
         int from = Math.max(0, (pageNum - 1) * pageSize);
         int to = Math.min(total, from + pageSize);

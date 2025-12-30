@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -40,10 +41,10 @@ public class AchievementServiceImpl implements AchievementService {
     private final WebClient adminWebClient;
     private static final Logger logger = LoggerFactory.getLogger(AchievementServiceImpl.class);
 
-    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, StringRedisTemplate redis, @Value("http://admin-service:8085") String adminServiceUrl) {
+    public AchievementServiceImpl(AchievementRepository achievementRepository, FolderRepository folderRepository, ObjectProvider<StringRedisTemplate> redisProvider, @Value("http://admin-service:8085") String adminServiceUrl) {
         this.achievementRepository = achievementRepository;
         this.folderRepository = folderRepository;
-        this.redis = redis;
+        this.redis = redisProvider.getIfAvailable();
         this.decrIfPositiveScript = new DefaultRedisScript<>();
         this.decrIfPositiveScript.setScriptText("local v = redis.call('get', KEYS[1]); if (not v) or (tonumber(v) <= 0) then return tonumber(v) or 0; else return redis.call('decr', KEYS[1]); end");
         this.decrIfPositiveScript.setResultType(Long.class);
@@ -145,7 +146,9 @@ public class AchievementServiceImpl implements AchievementService {
     public void cite(String achId) {
         String key = String.format("achievement:%s:citeds", achId);
         try {
-            redis.opsForValue().increment(key, 1);
+            if (redis != null) {
+                redis.opsForValue().increment(key, 1);
+            }
         } catch (Exception ex) {
             // fallback: update DB directly if Redis is unavailable
             Optional<AchievementEntity> opt = achievementRepository.findById(achId);
@@ -189,7 +192,9 @@ public class AchievementServiceImpl implements AchievementService {
         // persist relation change immediately, but keep counter in Redis
         achievementRepository.save(a);
         String key = String.format("achievement:%s:collects", achId);
-        redis.opsForValue().increment(key, 1);
+        if (redis != null) {
+            redis.opsForValue().increment(key, 1);
+        }
     }
 
     @Override
@@ -205,7 +210,9 @@ public class AchievementServiceImpl implements AchievementService {
         // persist relation change immediately, but decrement counter in Redis only
         achievementRepository.save(a);
         String key = String.format("achievement:%s:collects", achId);
-        redis.execute(decrIfPositiveScript, Collections.singletonList(key));
+        if (redis != null) {
+            redis.execute(decrIfPositiveScript, Collections.singletonList(key));
+        }
     }
 
     @Override
@@ -217,7 +224,9 @@ public class AchievementServiceImpl implements AchievementService {
             List<AchievementEntity> related = achievementRepository.findByFolders_Id(folderId);
             for (AchievementEntity a : related) {
                 String key = String.format("achievement:%s:collects", a.getId());
-                redis.execute(decrIfPositiveScript, Collections.singletonList(key));
+                if (redis != null) {
+                    redis.execute(decrIfPositiveScript, Collections.singletonList(key));
+                }
                 a.getFolders().removeIf(ff -> folderId.equals(ff.getId()));
                 achievementRepository.save(a);
             }
@@ -242,7 +251,7 @@ public class AchievementServiceImpl implements AchievementService {
         if (keyword.isEmpty()) {
             return achievementRepository.findAll().stream()
                     .map(this::toDto)
-                    .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                    .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getUserId(), d.getId()))
                     .collect(Collectors.toList());
         }
         final String keywordLower = keyword.toLowerCase();
@@ -251,7 +260,7 @@ public class AchievementServiceImpl implements AchievementService {
                 || containsIgnoreCase(e.getAuthors(), keywordLower)
                 || containsIgnoreCase(e.getAbstractText(), keywordLower))
                 .map(this::toDto)
-                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getUserId(), d.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -268,7 +277,7 @@ public class AchievementServiceImpl implements AchievementService {
                 .filter(e -> matchClassification(e, classification))
                 .filter(e -> matchYearRange(e, fromYear, toYear))
                 .map(this::toDto)
-                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getUserId(), d.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -283,7 +292,7 @@ public class AchievementServiceImpl implements AchievementService {
     public List<AchievementDto> listByFolder(String folderId) {
         return achievementRepository.findByFolders_Id(folderId).stream()
                 .map(this::toDto)
-                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getId()))
+                .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getUserId(), d.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -320,7 +329,7 @@ public class AchievementServiceImpl implements AchievementService {
             java.util.Map<String, String> body = java.util.Collections.singletonMap("achievementId", achId);
             adminWebClient.post()
                     .uri("/api/admin/achievement")
-                    .header("X-User-Id", userId == null ? "" : userId)
+                    .header("X-User-Id", userId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body)
                     .retrieve()
@@ -336,13 +345,12 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader, String userRoleHeader) {
+    public Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader) {
         ParameterizedTypeReference<java.util.Map<String, Object>> typeRef = new ParameterizedTypeReference<>() {
         };
         return adminWebClient.get()
                 .uri("/api/admin/achievement")
-                .header("X-User-Id", userIdHeader == null ? "" : userIdHeader)
-                .header("X-User-Role", userRoleHeader == null ? "" : userRoleHeader)
+                .header("X-User-Id", userIdHeader)
                 .retrieve()
                 .bodyToMono(typeRef)
                 .onErrorReturn(java.util.Collections.emptyMap())
@@ -497,7 +505,7 @@ public class AchievementServiceImpl implements AchievementService {
         }
     }
 
-    private Boolean searchFromReview(String achId) {
+    private Boolean searchFromReview(String userId, String achId) {
         if (achId == null || achId.isBlank()) {
             return false;
         }
@@ -507,6 +515,7 @@ public class AchievementServiceImpl implements AchievementService {
             };
             java.util.Map<String, Object> resp = adminWebClient.method(org.springframework.http.HttpMethod.GET)
                     .uri("/api/admin/achievement/check")
+                    .header("X-User-Id", userId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body)
                     .retrieve()
