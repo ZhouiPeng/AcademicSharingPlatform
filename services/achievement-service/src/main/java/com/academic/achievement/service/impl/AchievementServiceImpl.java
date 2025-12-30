@@ -89,7 +89,7 @@ public class AchievementServiceImpl implements AchievementService {
             e.setCreatedAt(System.currentTimeMillis());
         }
         achievementRepository.save(e);
-        if (!userRoleHeader.equals("ADMIN")) {
+        if (!"ADMIN".equals(userRoleHeader)) {
             applyReview(e.getId(), dto.getUserId());
         }
         return e.getId();
@@ -265,27 +265,77 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public List<AchievementDto> filter(AchievementFilterRequest filterRequest) {
+    public List<AchievementDto> filter(AchievementFilterRequest filterRequest, String sortBy, String order) {
         AchievementFilterRequest criteria = filterRequest == null ? new AchievementFilterRequest() : filterRequest;
         String keyword = criteria.getKeywords() == null ? null : criteria.getKeywords().trim();
         String classification = criteria.getClassification() == null ? null : criteria.getClassification().trim();
         Integer fromYear = criteria.getFromYear();
         Integer toYear = criteria.getToYear();
 
-        return achievementRepository.findAll().stream()
+        String title = criteria.getTitle() == null ? null : criteria.getTitle().trim();
+        String userId = criteria.getUserId() == null ? null : criteria.getUserId().trim();
+        String fileId = criteria.getFileId() == null ? null : criteria.getFileId().trim();
+        Integer type = criteria.getType();
+        java.util.List<String> authors = criteria.getAuthors();
+        java.util.List<String> categories = criteria.getCategories();
+        List<AchievementDto> results = achievementRepository.findAll().stream()
                 .filter(e -> matchKeywords(e, keyword))
                 .filter(e -> matchClassification(e, classification))
                 .filter(e -> matchYearRange(e, fromYear, toYear))
+                .filter(e -> matchTitle(e, title))
+                .filter(e -> matchUserId(e, userId))
+                .filter(e -> matchFileId(e, fileId))
+                .filter(e -> matchType(e, type))
+                .filter(e -> matchAuthorsList(e, authors))
+                .filter(e -> matchCategoriesList(e, categories))
                 .map(this::toDto)
                 .filter(d -> d != null && d.getId() != null && !searchFromReview(d.getUserId(), d.getId()))
                 .collect(Collectors.toList());
+
+        // apply optional sorting from query params
+        if (sortBy != null && !sortBy.isBlank()) {
+            sortDtoList(results, sortBy, order);
+        }
+
+        return results;
+    }
+
+    @Override
+    public List<AchievementDto> search(String q, String sortBy, String order) {
+        List<AchievementDto> list = search(q);
+        if (list == null || list.isEmpty()) return list;
+        if (sortBy != null && !sortBy.isBlank()) {
+            sortDtoList(list, sortBy, order);
+        }
+        return list;
+    }
+
+    private void sortDtoList(List<AchievementDto> list, String sortBy, String order) {
+        String normalizedSort = sortBy == null ? "date" : sortBy.trim().toLowerCase();
+        Comparator<AchievementDto> comparator;
+        switch (normalizedSort) {
+            case "title":
+                comparator = Comparator.comparing(dto -> dto.getTitle() == null ? "" : dto.getTitle(), String.CASE_INSENSITIVE_ORDER);
+                break;
+            case "date":
+            case "createdat":
+            default:
+                comparator = Comparator.comparing(dto -> dto.getCreatedAt() == null ? 0L : dto.getCreatedAt());
+                break;
+        }
+
+        if (!"asc".equalsIgnoreCase(order)) {
+            comparator = comparator.reversed();
+        }
+
+        list.sort(comparator);
     }
 
     @Override
     public List<AchievementDto> listByCategory(String catId) {
         AchievementFilterRequest criteria = new AchievementFilterRequest();
         criteria.setClassification(catId);
-        return filter(criteria);
+        return filter(criteria, null, null);
     }
 
     @Override
