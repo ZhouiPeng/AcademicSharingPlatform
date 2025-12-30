@@ -11,7 +11,7 @@ public interface AdminService {
 
     List<AuthDto> listAuthentications(String userId);
 
-    ProcessDto processAuthentication(String formId, ProcessRequest req);
+    ProcessDto processAuthentication(String formId, ProcessRequest req, String role);
 
     Mono<String> createReport(String reporterId, ReportRequest req);
 

@@ -265,10 +265,10 @@ public class UserServiceImpl implements UserService {
         }
         if (role.equals(Role.ADMIN.toString())) {
             user.setRole(Role.ADMIN);
-        } else if (role.equals(Role.NORMAL.toString())) {
-            user.setRole(Role.NORMAL);
+        } else if (role.equals(Role.SCHOLAR.toString())) {
+            user.setRole(Role.SCHOLAR);
         } else {
-            throw new ServiceError("角色不存在(\"RESEARCHER\"或\"NORMAL\"或\"ADMIN\")", 0);
+            throw new ServiceError("角色不存在(\"SCHOLAR\"或\"NORMAL\"或\"ADMIN\")", 0);
         }
         user.setUpdatedAt(LocalDateTime.now());
         int r = userMapper.updateUser(user);

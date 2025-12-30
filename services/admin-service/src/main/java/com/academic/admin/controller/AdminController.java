@@ -50,9 +50,10 @@ public class AdminController {
     @PutMapping("/authentication/{formId}")
     @Operation(summary = "处理认证申请")
     public ResponseEntity<ApiResponse<ProcessDto>> processAuthentication(
+            @RequestHeader(name = "X-User-Role") String userRoleHeader,
             @PathVariable @NotBlank String formId,
             @RequestBody @Valid ProcessRequest requestBody) {
-        return ResponseEntity.ok(ApiResponse.success(adminService.processAuthentication(formId, requestBody)));
+        return ResponseEntity.ok(ApiResponse.success(adminService.processAuthentication(formId, requestBody, userRoleHeader)));
     }
 
     @PostMapping("/report")

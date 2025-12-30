@@ -35,6 +35,7 @@ public class AdminServiceImpl implements AdminService {
     private final MessageRepository messageRepository;
     private final UserMessageStateRepository stateRepository;
     private final WebClient userWebClient;
+    private final WebClient achievementWebClient;
     private final AuthRequestRepository authRequestRepository;
     private final AchievementRepository achievementRepository;
     private final ReportRepository reportRepository;
@@ -44,12 +45,14 @@ public class AdminServiceImpl implements AdminService {
             AuthRequestRepository authRequestRepository,
             AchievementRepository achievementRepository,
             ReportRepository reportRepository,
-            @Value("http://user-service:8081") String userServiceUrl) {
+            @Value("http://user-service:8081") String userServiceUrl,
+            @Value("http://achievement-service:8082") String achievementServiceUrl) {
         this.messageRepository = messageRepository;
         this.stateRepository = stateRepository;
         this.authRequestRepository = authRequestRepository;
         this.achievementRepository = achievementRepository;
         this.reportRepository = reportRepository;
+        this.achievementWebClient = WebClient.builder().baseUrl(achievementServiceUrl).build();
         this.userWebClient = WebClient.builder().baseUrl(userServiceUrl).build();
     }
 
@@ -114,7 +117,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public ProcessDto processAuthentication(String formId, ProcessRequest req) {
+    public ProcessDto processAuthentication(String formId, ProcessRequest req, String role) {
         AuthRequestEntity ent = authRequestRepository.findById(formId).orElseThrow(() -> new IllegalStateException("authentication form not found: " + formId));
         ent.setStatus(req.getStatus());
         authRequestRepository.save(ent);
@@ -124,6 +127,21 @@ public class AdminServiceImpl implements AdminService {
         info.setTitle("门户认证申请处理结果通知");
         info.setContent("申请结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
         sendInformation(info).subscribe();
+
+        if (req.getStatus().equals("APPROVED")) {
+            Mono<Void> setRoleMono = userWebClient.put()
+                .uri("/api/users/users/setRole/{userId}", ent.getApplicantUserId())
+                .header("X-User-Role", role)
+                .bodyValue(Map.of("role", "SCHOLAR"))
+                .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), resp -> resp.bodyToMono(String.class)
+                    .flatMap(body -> Mono.error(new IllegalStateException("user-service error: " + resp.statusCode() + " " + body))))
+                .bodyToMono(Void.class)
+                .timeout(Duration.ofSeconds(10))
+                .subscribeOn(Schedulers.boundedElastic());
+
+            setRoleMono.subscribe();
+        }
 
         return new ProcessDto(req.getStatus());
     }
@@ -442,6 +460,19 @@ public class AdminServiceImpl implements AdminService {
         info.setTitle("成果审核处理结果通知");
         info.setContent("审核结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
         sendInformation(info).subscribe();
+
+        if (req.getStatus().equals("REJECTED")) {
+            Mono<Void> deleteMono = achievementWebClient.delete()
+                .uri("/api/achievements/{achId}", ent.getAchievementId())
+                .retrieve()
+                .onStatus(status -> !status.is2xxSuccessful(), resp -> resp.bodyToMono(String.class)
+                    .flatMap(body -> Mono.error(new IllegalStateException("achievement-service error: " + resp.statusCode() + " " + body))))
+                .bodyToMono(Void.class)
+                .timeout(Duration.ofSeconds(10))
+                .subscribeOn(Schedulers.boundedElastic());
+
+            deleteMono.subscribe();
+        }
 
         return new ProcessDto(req.getStatus());
     }
