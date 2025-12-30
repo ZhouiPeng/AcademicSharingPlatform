@@ -187,7 +187,7 @@ public class UserController {
         }
     }
 
-        @Operation(summary = "按用户名查找用户（仅返回基础信息，内部调用）")
+        @Operation(summary = "按用户名查找用户（仅返回基础信息）")
         @GetMapping("/lookup/{username}")
         @ResponseBody
         public ResponseEntity<ApiResponse<User>> lookupByUsername(@PathVariable String username) {
