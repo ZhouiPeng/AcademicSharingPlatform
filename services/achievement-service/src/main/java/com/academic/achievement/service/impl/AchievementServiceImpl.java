@@ -395,12 +395,13 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader) {
+    public Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader, String userRoleHeader) {
         ParameterizedTypeReference<java.util.Map<String, Object>> typeRef = new ParameterizedTypeReference<>() {
         };
         return adminWebClient.get()
                 .uri("/api/admin/achievement")
                 .header("X-User-Id", userIdHeader)
+                .header("X-User-Role", userRoleHeader)
                 .retrieve()
                 .bodyToMono(typeRef)
                 .onErrorReturn(java.util.Collections.emptyMap())
