@@ -139,7 +139,7 @@ public class AchievementServiceImpl implements AchievementService {
 
     @Override
     public List<AchievementDto> listByAuthor(String authorId) {
-        return achievementRepository.findByUserId(authorId).stream().map(this::toDto).collect(Collectors.toList());
+        return achievementRepository.findByUserId(authorId).stream().map(this::toDto).filter(d -> d != null && d.getId() != null && !searchFromReview(d.getUserId(), d.getId())).collect(Collectors.toList());
     }
 
     @Override
