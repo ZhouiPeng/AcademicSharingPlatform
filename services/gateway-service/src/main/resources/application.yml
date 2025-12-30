@@ -107,6 +107,21 @@ spring:
             - Path=/gateway-api-docs/data-sync-service/**
           filters:
             - RewritePath=^/gateway-api-docs/data-sync-service(/.*)?,/v3/api-docs$1
+ 
+      globalcors:
+        corsConfigurations:
+          "[/**]":
+            allowedOrigins:
+              - "${FRONTEND_URL}"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
 
 gateway:
   swagger:
