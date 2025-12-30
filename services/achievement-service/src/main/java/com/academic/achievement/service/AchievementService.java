@@ -43,5 +43,5 @@ public interface AchievementService {
 
     List<AchievementDto> searchWithSort(String sortBy, String order);
 
-    reactor.core.publisher.Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader);
+    reactor.core.publisher.Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader, String userRoleHeader);
 }
