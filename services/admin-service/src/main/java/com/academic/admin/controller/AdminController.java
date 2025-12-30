@@ -128,8 +128,10 @@ public class AdminController {
 
     @GetMapping("/achievement")
     @Operation(summary = "获取待审核成果列表")
-    public ResponseEntity<ApiResponse<List<AchievementDto>>> getAchievement(@RequestHeader(name = "X-User-Id") String userIdHeader) {
-        return ResponseEntity.ok(ApiResponse.success(adminService.getAchievement(userIdHeader)));
+    public ResponseEntity<ApiResponse<List<AchievementDto>>> getAchievement(
+        @RequestHeader(name = "X-User-Id") String userIdHeader,
+        @RequestHeader(name = "X-User-Role") String userRoleHeader) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getAchievement(userIdHeader, userRoleHeader)));
     }
 
     @GetMapping("/achievement/check")

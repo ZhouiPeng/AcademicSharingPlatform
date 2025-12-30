@@ -31,7 +31,7 @@ public interface AdminService {
 
     Mono<String> applyAchievement(String userId, String achievementId);
 
-    List<AchievementDto> getAchievement(String userId);
+    List<AchievementDto> getAchievement(String userId, String role);
 
     ProcessDto processAchievement(String formId, ProcessRequest req);
 

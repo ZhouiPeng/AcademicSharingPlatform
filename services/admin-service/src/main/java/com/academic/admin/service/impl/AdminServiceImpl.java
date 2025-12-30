@@ -408,12 +408,14 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public List<AchievementDto> getAchievementReview(String userId) {
-        List<AchievementEntity> ents = achievementRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        if (ents == null || ents.isEmpty()) {
-            throw new IllegalStateException("no achievements found" + userId);
+    public List<AchievementDto> getAchievement(String id, String role) {
+        List<AchievementEntity> ents = null;
+        if (role.equals("ADMIN")) {
+            ents = achievementRepository.findByProceedingAdminIdOrderByCreatedAtDesc(id);
+        } else {
+            ents = achievementRepository.findByUserIdOrderByCreatedAtDesc(id);
         }
-        List<AchievementDto> res = new ArrayList<>(ents.size());
+        List<AchievementDto> res = new ArrayList<>(ents == null ? 0 : ents.size());
         for (AchievementEntity e : ents) {
             String st = e.getStatus();
             if (st == null || !"PENDING".equalsIgnoreCase(st)) {

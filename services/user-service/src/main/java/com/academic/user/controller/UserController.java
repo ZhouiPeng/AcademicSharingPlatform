@@ -244,21 +244,18 @@ public class UserController {
     })
     @PostMapping("/verification/send")
     @ResponseBody
-    public ResponseEntity<ApiResponse<VerificationResponseModel>> registerValidation(
-            @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
-            @RequestBody(required = false) VerificationRequestModel verificationRequestModel) {
+    public ResponseEntity<ApiResponse<VerificationResponseModel>> registerValidation(@RequestBody VerificationRequestModel verificationRequestModel) {
         ApiResponse<VerificationResponseModel> apiResponse = new ApiResponse<>();
         VerificationResponseModel verificationResponseModel = new VerificationResponseModel();
         try {
-            if (userIdHeader != null && !userIdHeader.isEmpty()) {
-                userService.generateVerificationCode(userIdHeader, null);
-                verificationResponseModel.setValidateId(userIdHeader);
-                return ResponseEntity.ok().body(
-                        apiResponse.success("验证码已发送，请检查邮箱", null));
-            }
-            else if(verificationRequestModel == null) {
+            if(verificationRequestModel == null) {
                 return ResponseEntity.badRequest().body(
                         apiResponse.fail(ResultCode.SERVICE_NOT_COMPLETTE, "请求体不能为空"));
+            }
+            if (verificationRequestModel.getUserId() != null && !verificationRequestModel.getUserId().isEmpty()) {
+                userService.generateVerificationCode(verificationRequestModel.getUserId(), null);
+                return ResponseEntity.ok().body(
+                        apiResponse.success("验证码已发送，请检查邮箱", null));
             }
             if (verificationRequestModel.getEmail() == null
                     || verificationRequestModel.getEmail().isEmpty()) {
@@ -496,7 +493,7 @@ public class UserController {
         }
     }
 
-    @GetMapping("/users/setRole/{userId}")
+    @PutMapping("/users/setRole/{userId}")
     @ResponseBody
     public ResponseEntity<ApiResponse<TotalResponseModel>> setRole(
         @RequestHeader(name = "X-User-Role") String userRoleHeader,
@@ -510,7 +507,7 @@ public class UserController {
         try {
             userService.setRole(userId, setRoleRequest.getRole());
             return ResponseEntity.ok().body(
-                    apiResponse.success("获取成功", null));
+                    apiResponse.success("修改成功", null));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(
