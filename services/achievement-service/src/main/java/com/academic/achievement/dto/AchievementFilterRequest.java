@@ -5,6 +5,12 @@ public class AchievementFilterRequest {
     private String classification;
     private Integer fromYear;
     private Integer toYear;
+    private String title;
+    private String userId;
+    private String fileId;
+    private Integer type;
+    private java.util.List<String> authors;
+    private java.util.List<String> categories;
     private Integer pageNum;
     private Integer pageSize;
     private String sortBy;
@@ -42,6 +48,54 @@ public class AchievementFilterRequest {
 
     public void setToYear(Integer toYear) {
         this.toYear = toYear;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getFileId() {
+        return fileId;
+    }
+
+    public void setFileId(String fileId) {
+        this.fileId = fileId;
+    }
+
+    public Integer getType() {
+        return type;
+    }
+
+    public void setType(Integer type) {
+        this.type = type;
+    }
+
+    public java.util.List<String> getAuthors() {
+        return authors;
+    }
+
+    public void setAuthors(java.util.List<String> authors) {
+        this.authors = authors;
+    }
+
+    public java.util.List<String> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(java.util.List<String> categories) {
+        this.categories = categories;
     }
 
     public Integer getPageNum() {
