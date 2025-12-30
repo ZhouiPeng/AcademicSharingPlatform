@@ -53,7 +53,12 @@ public class AchievementController {
     @Operation(summary = "上传成就")
     public ResponseEntity<ApiResponse<Object>> upload(
             @RequestHeader(name = "X-User-Role", required = false) String userRoleHeader,
+            @RequestHeader(name = "X-User-Id", required = false) String userIdHeader,
             @RequestBody AchievementDto dto) {
+        // if client didn't provide a userId in the payload, default to the current token/header user id
+        if ((dto.getUserId() == null || dto.getUserId().isBlank()) && userIdHeader != null && !userIdHeader.isBlank()) {
+            dto.setUserId(userIdHeader);
+        }
         try {
             String id = service.upload(dto, userRoleHeader);
             java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);

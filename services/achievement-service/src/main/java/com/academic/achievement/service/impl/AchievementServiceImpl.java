@@ -94,7 +94,7 @@ public class AchievementServiceImpl implements AchievementService {
             e.setCreatedAt(System.currentTimeMillis());
         }
         achievementRepository.save(e);
-        if (!userRoleHeader.equals("ADMIN")) {
+        if (!"ADMIN".equals(userRoleHeader)) {
             applyReview(e.getId(), dto.getUserId());
         }
         return e.getId();
