@@ -9,8 +9,10 @@ import java.util.List;
 @Repository
 public interface AchievementRepository extends JpaRepository<AchievementEntity, String> {
 
-	List<AchievementEntity> findByProceedingAdminIdOrderByCreatedAtDesc(String proceedingAdminId);
+    List<AchievementEntity> findByProceedingAdminIdOrderByCreatedAtDesc(String proceedingAdminId);
 
-	List<AchievementEntity> findByUserIdOrderByCreatedAtDesc(String userId);
+    List<AchievementEntity> findByUserIdOrderByCreatedAtDesc(String userId);
+
+    AchievementEntity findByUserIdAndAchievementId(String userId, String achievementId);
 
 }

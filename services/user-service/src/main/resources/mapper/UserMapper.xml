@@ -4,7 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.academic.user.mapper.UserMapper">
     <!--添加用户-->
-    <insert id="add" parameterType="com.academic.user.dto.User" useGeneratedKeys="true" keyProperty="userId">
+    <insert id="add" parameterType="com.academic.user.dto.service.User" useGeneratedKeys="true" keyProperty="userId">
         insert into users(user_id, username, email, password_hash, role, display_name, avatar_url,
         created_at, updated_at)
         values(#{userId},#{username},#{email},#{passwordHash},#{role}, #{displayName}, #{avatarUrl},
@@ -17,17 +17,17 @@
         delete from user_follows where follower_id = #{userId} and followee_id = #{targetId};
     </delete>
 
-    <select id="selectUser" parameterType="java.lang.String" resultType="com.academic.user.dto.User">
+    <select id="selectUser" parameterType="java.lang.String" resultType="com.academic.user.dto.service.User">
         select * from users where user_id = #{userId}
     </select>
 
     <select id="selectOneByUserName" parameterType="java.lang.String"
-            resultType="com.academic.user.dto.User">
+            resultType="com.academic.user.dto.service.User">
         select * from users where username = #{userName}
     </select>
 
     <select id="selectOneByUserId" parameterType="java.lang.String"
-            resultType="com.academic.user.dto.User">
+            resultType="com.academic.user.dto.service.User">
         select * from users where user_id = #{userId}
     </select>
     <select id="countByUserId" resultType="java.lang.Integer">
@@ -55,19 +55,19 @@
         select count(*) from users;
     </select>
 
-    <update id="updateUser" parameterType="com.academic.user.dto.User">
+    <update id="updateUser" parameterType="com.academic.user.dto.service.User">
         update users
         <trim prefix="SET" suffixOverrides=",">
-            <if test="#{displayName} != null and #{displayName} != ''">
+            <if test="displayName != null and displayName != ''">
                 display_name = #{displayName},
             </if>
-            <if test="#{avatarUrl} != null and #{avatarUrl} != ''">
+            <if test="avatarUrl != null and avatarUrl != ''">
                 avatar_url = #{avatarUrl},
             </if>
-            <if test="#{email} != null and #{email} != ''">
+            <if test="email != null and email != ''">
                 email = #{email},
             </if>
-            <if test="#{passwordHash} != null and #{passwordHash} != ''">
+            <if test="passwordHash != null and passwordHash != ''">
                 password_hash = #{passwordHash},
             </if>
         </trim>

@@ -86,8 +86,6 @@ public class AdminServiceImpl implements AdminService {
                 });
     }
 
-    
-
     @Override
     public List<AuthDto> listAuthentications(String userId) {
         List<AuthRequestEntity> ents = authRequestRepository.findByProceedingAdminIdOrderByCreatedAtDesc(userId);
@@ -116,7 +114,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public String processAuthentication(String formId, ProcessRequest req) {
+    public ProcessDto processAuthentication(String formId, ProcessRequest req) {
         AuthRequestEntity ent = authRequestRepository.findById(formId).orElseThrow(() -> new IllegalStateException("authentication form not found: " + formId));
         ent.setStatus(req.getStatus());
         authRequestRepository.save(ent);
@@ -127,7 +125,7 @@ public class AdminServiceImpl implements AdminService {
         info.setContent("申请结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
         sendInformation(info).subscribe();
 
-        return req.getStatus();
+        return new ProcessDto(req.getStatus());
     }
 
     @Override
@@ -137,14 +135,14 @@ public class AdminServiceImpl implements AdminService {
                 .switchIfEmpty(Mono.error(new IllegalStateException("no assigned admin found")))
                 .flatMap(assignedAdmin -> {
                     ReportEntity r = ReportEntity.builder()
-                        .id(UUID.randomUUID().toString())
-                        .proceedingAdminId(assignedAdmin)
-                        .reporterId(reporterId)
-                        .type(req.getType())
-                        .targetId(req.getTargetId())
-                        .reason(req.getReason())
-                        .status(status)
-                        .build();
+                            .id(UUID.randomUUID().toString())
+                            .proceedingAdminId(assignedAdmin)
+                            .reporterId(reporterId)
+                            .type(req.getType())
+                            .targetId(req.getTargetId())
+                            .reason(req.getReason())
+                            .status(status)
+                            .build();
 
                     return Mono.fromCallable(() -> reportRepository.save(r))
                             .subscribeOn(Schedulers.boundedElastic())
@@ -192,7 +190,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public String processReport(String reportId, ProcessRequest req) {
+    public ProcessDto processReport(String reportId, ProcessRequest req) {
         ReportEntity ent = reportRepository.findById(reportId).orElseThrow(() -> new IllegalStateException("report not found: " + reportId));
         ent.setStatus(req.getStatus());
         reportRepository.save(ent);
@@ -203,7 +201,7 @@ public class AdminServiceImpl implements AdminService {
         info.setContent("举报处理结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
         sendInformation(info).subscribe();
 
-        return req.getStatus();
+        return new ProcessDto(req.getStatus());
     }
 
     @Override
@@ -234,17 +232,17 @@ public class AdminServiceImpl implements AdminService {
                     .map(m -> List.of(m.get("userId")));
         }
 
-        return savedMono.flatMapMany(saved ->
-                recipientsMono.flatMapMany(Flux::fromIterable)
+        return savedMono.flatMapMany(saved
+                -> recipientsMono.flatMapMany(Flux::fromIterable)
                         .flatMap(userId -> Mono.fromCallable(() -> {
-                            UserMessageState state = UserMessageState.builder()
-                                    .id(UUID.randomUUID().toString())
-                                    .userId(userId)
-                                    .messageId(saved.getId())
-                                    .state("UNREAD")
-                                    .build();
-                            return stateRepository.save(state);
-                        }).subscribeOn(Schedulers.boundedElastic()))
+                    UserMessageState state = UserMessageState.builder()
+                            .id(UUID.randomUUID().toString())
+                            .userId(userId)
+                            .messageId(saved.getId())
+                            .state("UNREAD")
+                            .build();
+                    return stateRepository.save(state);
+                }).subscribeOn(Schedulers.boundedElastic()))
                         .then()
         ).then();
     }
@@ -261,7 +259,9 @@ public class AdminServiceImpl implements AdminService {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> obj = (Map<String, Object>) d;
                     Map<String, String> map = new HashMap<>();
-                    for (Map.Entry<String, Object> e : obj.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                    for (Map.Entry<String, Object> e : obj.entrySet()) {
+                        map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                    }
                     return Mono.just(map);
                 })
                 .timeout(Duration.ofSeconds(10));
@@ -270,7 +270,9 @@ public class AdminServiceImpl implements AdminService {
     private Mono<String> assignedAdmin() {
         return fetchUsersByGroup("ADMIN")
                 .flatMap(list -> {
-                    if (list == null || list.isEmpty()) return Mono.empty();
+                    if (list == null || list.isEmpty()) {
+                        return Mono.empty();
+                    }
                     List<String> choices = list.stream().map(m -> m.get("userId")).collect(Collectors.toList());
                     String selected = choices.get(ThreadLocalRandom.current().nextInt(choices.size()));
                     return Mono.just(selected);
@@ -292,7 +294,9 @@ public class AdminServiceImpl implements AdminService {
                     List<Map<String, Object>> objList = (List<Map<String, Object>>) records.get("records");
                     List<Map<String, String>> converted = objList.stream().map(m -> {
                         Map<String, String> map = new HashMap<>();
-                        for (Map.Entry<String, Object> e : m.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                        for (Map.Entry<String, Object> e : m.entrySet()) {
+                            map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                        }
                         return map;
                     }).collect(Collectors.toList());
                     return Mono.just(converted);
@@ -314,7 +318,9 @@ public class AdminServiceImpl implements AdminService {
                     List<Map<String, Object>> objList = (List<Map<String, Object>>) d.get("records");
                     List<Map<String, String>> converted = objList.stream().map(m -> {
                         Map<String, String> map = new HashMap<>();
-                        for (Map.Entry<String, Object> e : m.entrySet()) map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                        for (Map.Entry<String, Object> e : m.entrySet()) {
+                            map.put(e.getKey(), e.getValue() == null ? null : String.valueOf(e.getValue()));
+                        }
                         return map;
                     }).collect(Collectors.toList());
                     return Mono.just(converted);
@@ -375,16 +381,22 @@ public class AdminServiceImpl implements AdminService {
         return assignedAdmin()
                 .switchIfEmpty(Mono.error(new IllegalStateException("no assigned admin found")))
                 .flatMap(assignedAdmin -> {
-                    AchievementEntity r = AchievementEntity.builder()
-                        .id(UUID.randomUUID().toString())
-                        .proceedingAdminId(assignedAdmin)
-                        .userId(userId)
-                        .achievementId(achievementId)
-                        .status(status)
-                        .build();
-
-                    return Mono.fromCallable(() -> achievementRepository.save(r))
-                            .subscribeOn(Schedulers.boundedElastic())
+                    return Mono.fromCallable(() -> {
+                        AchievementEntity existing = achievementRepository.findByUserIdAndAchievementId(userId, achievementId);
+                        if (existing != null) {
+                            existing.setProceedingAdminId(assignedAdmin);
+                            existing.setStatus(status);
+                            return achievementRepository.save(existing);
+                        }
+                        AchievementEntity r = AchievementEntity.builder()
+                                .id(UUID.randomUUID().toString())
+                                .proceedingAdminId(assignedAdmin)
+                                .userId(userId)
+                                .achievementId(achievementId)
+                                .status(status)
+                                .build();
+                        return achievementRepository.save(r);
+                    }).subscribeOn(Schedulers.boundedElastic())
                             .flatMap(saved -> {
                                 SendInfoRequest info = new SendInfoRequest();
                                 info.setTargetGroup(assignedAdmin);
@@ -397,7 +409,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<AchievementDto> getAchievementReview(String userId) {
-        List<AchievementEntity> ents = achievementRepository.findByProceedingAdminIdOrderByCreatedAtDesc(userId);
+        List<AchievementEntity> ents = achievementRepository.findByUserIdOrderByCreatedAtDesc(userId);
         if (ents == null || ents.isEmpty()) {
             throw new IllegalStateException("no achievements found" + userId);
         }
@@ -408,6 +420,7 @@ public class AdminServiceImpl implements AdminService {
                 continue;
             }
             AchievementDto d = AchievementDto.builder()
+                    .id(e.getId())
                     .achievementId(e.getAchievementId())
                     .createdAt(e.getCreatedAt().toString())
                     .build();
@@ -417,24 +430,7 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public List<AchievementDto> getAchievement(String userId) {
-        List<AchievementEntity> ents = achievementRepository.findByUserIdOrderByCreatedAtDesc(userId);
-        if (ents == null || ents.isEmpty()) {
-            throw new IllegalStateException("no achievements found" + userId);
-        }
-        List<AchievementDto> res = new ArrayList<>(ents.size());
-        for (AchievementEntity e : ents) {
-            AchievementDto d = AchievementDto.builder()
-                    .achievementId(e.getAchievementId())
-                    .createdAt(e.getCreatedAt().toString())
-                    .build();
-            res.add(d);
-        }
-        return res;
-    }
-
-    @Override
-    public String processAchievement(String formId, ProcessRequest req) {
+    public ProcessDto processAchievement(String formId, ProcessRequest req) {
         AchievementEntity ent = achievementRepository.findById(formId).orElseThrow(() -> new IllegalStateException("achievement form not found: " + formId));
         ent.setStatus(req.getStatus());
         achievementRepository.save(ent);
@@ -445,13 +441,15 @@ public class AdminServiceImpl implements AdminService {
         info.setContent("审核结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
         sendInformation(info).subscribe();
 
-        return req.getStatus();
+        return new ProcessDto(req.getStatus());
     }
 
     @Override
-    public String checkAchievement(String achievementId) {
-        AchievementEntity ent = achievementRepository.findById(achievementId).orElse(null);
-        if (ent != null && ent.getStatus().equals("PENDING")) return "PENDING";
+    public String checkAchievement(String userId, String achievementId) {
+        AchievementEntity ent = achievementRepository.findByUserIdAndAchievementId(userId, achievementId);
+        if (ent != null && ent.getStatus().equals("PENDING")) {
+            return "PENDING";
+        }
         return null;
     }
 }

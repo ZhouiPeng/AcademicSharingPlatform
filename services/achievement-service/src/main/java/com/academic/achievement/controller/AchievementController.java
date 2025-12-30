@@ -1,9 +1,11 @@
 package com.academic.achievement.controller;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,41 +35,52 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Achievement Service", description = "成就相关接口")
 public class AchievementController {
 
+    private static final Logger log = LoggerFactory.getLogger(AchievementController.class);
+
     private final AchievementService service;
     private final EnvironmentConfig envConfig;
     private final WebClient analyticsClient;
 
-    public AchievementController(AchievementService service, EnvironmentConfig envConfig, WebClient.Builder webClientBuilder) {
+    public AchievementController(AchievementService service,
+            EnvironmentConfig envConfig,
+            WebClient.Builder webClientBuilder,
+            @Value("${analytics.service.url:http://analytics-service:8084}") String analyticsBaseUrl) {
         this.service = service;
         this.envConfig = envConfig;
-        this.analyticsClient = webClientBuilder.baseUrl("http://localhost:8084").build();
+        this.analyticsClient = webClientBuilder.baseUrl(analyticsBaseUrl).build();
     }
 
     @PostMapping
     @Operation(summary = "上传成就")
-    public ResponseEntity<ApiResponse<Object>> upload(@RequestBody AchievementDto dto) {
-        String id = service.upload(dto);
-        java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);
-        // report author relationship to analytics-service asynchronously (fire-and-forget)
+    public ResponseEntity<ApiResponse<Object>> upload(
+            @RequestHeader(name = "X-User-Role", required = false) String userRoleHeader,
+            @RequestBody AchievementDto dto) {
         try {
-            String userId = dto.getUserId();
-            String authors = "";
-            if (dto.getAuthors() != null && !dto.getAuthors().isEmpty()) {
-                authors = dto.getAuthors().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","));
+            String id = service.upload(dto, userRoleHeader);
+            java.util.Map<String, String> data = java.util.Collections.singletonMap("achievementId", id);
+            // report author relationship to analytics-service asynchronously (fire-and-forget)
+            try {
+                String userId = dto.getUserId();
+                String authors = "";
+                if (dto.getAuthors() != null && !dto.getAuthors().isEmpty()) {
+                    authors = dto.getAuthors().stream().map(Object::toString).collect(java.util.stream.Collectors.joining(","));
+                }
+                if (userId != null && !userId.isBlank() && (authors != null && !authors.isBlank())) {
+                    java.util.Map<String, String> body = java.util.Map.of("userId", userId, "authors", authors);
+                    analyticsClient.post()
+                            .uri("/api/analysis/author-relationship")
+                            .bodyValue(body)
+                            .retrieve()
+                            .toBodilessEntity()
+                            .subscribe();
+                }
+            } catch (Exception ignore) {
             }
-            if (userId != null && !userId.isBlank() && (authors != null && !authors.isBlank())) {
-                java.util.Map<String, String> body = java.util.Map.of("userId", userId, "authors", authors);
-                analyticsClient.post()
-                        .uri("/api/analysis/author-relationship")
-                        .bodyValue(body)
-                        .retrieve()
-                        .toBodilessEntity()
-                        .subscribe();
-            }
-        } catch (Exception ignore) {
-        }
 
-        return ResponseEntity.status(201).body(ApiResponse.success(data, "上传成功"));
+            return ResponseEntity.status(201).body(ApiResponse.success(data, "上传成功"));
+        } catch (com.academic.achievement.service.DuplicateAchievementException ex) {
+            return ResponseEntity.status(409).body(ApiResponse.error(ex.getMessage()));
+        }
     }
 
     @PutMapping("/{achId}")
@@ -81,11 +94,21 @@ public class AchievementController {
 
         // allowed keys must match Achievement properties
         java.util.Set<String> allowed = java.util.Set.of("title", "userId", "fileId", "type", "authors", "abstract", "categories");
+        // explicitly forbidden keys that must never be modified by client
+        java.util.Set<String> forbidden = java.util.Set.of("achievementId", "id", "createdAt", "downloadCount", "collectCount", "citedCount");
+
         java.util.List<String> invalid = new java.util.ArrayList<>();
+        java.util.List<String> forbiddenProvided = new java.util.ArrayList<>();
         for (String k : data.keySet()) {
             if (!allowed.contains(k)) {
                 invalid.add(k);
             }
+            if (forbidden.contains(k)) {
+                forbiddenProvided.add(k);
+            }
+        }
+        if (!forbiddenProvided.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("不可修改字段: " + String.join(",", forbiddenProvided)));
         }
         if (!invalid.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("invalid data keys: " + String.join(",", invalid)));
@@ -183,21 +206,20 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
-    @GetMapping("/{achId}/download")
-    @Operation(summary = "生成成就下载链接")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> download(@PathVariable String achId) {
-        String url = service.generateDownloadLink(achId);
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("downloadUrl", url);
-        data.put("expiresAt", Instant.now().plusSeconds(3600).toEpochMilli());
-        return ResponseEntity.ok(ApiResponse.success(data));
+    @PostMapping("/{achId}/cite")
+    @Operation(summary = "为指定成就添加一次引用（citedCount +1）")
+    public ResponseEntity<ApiResponse<Object>> cite(@PathVariable String achId) {
+        service.cite(achId);
+        return ResponseEntity.status(201).body(ApiResponse.success(null, "引用已记录"));
     }
 
     // 收藏相关
     @PostMapping("/folders")
     @Operation(summary = "创建收藏夹")
-    public ResponseEntity<ApiResponse<com.academic.achievement.dto.FolderIdDto>> createFolder(@RequestBody CollectionFolderDto dto) {
-        CollectionFolderDto created = service.createFolder(dto);
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.FolderIdDto>> createFolder(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestBody CollectionFolderDto dto) {
+        CollectionFolderDto created = service.createFolder(dto, userIdHeader);
         com.academic.achievement.dto.FolderIdDto out = new com.academic.achievement.dto.FolderIdDto(created.getId());
         return ResponseEntity.status(201).body(ApiResponse.success(out, "创建成功"));
     }
@@ -223,10 +245,26 @@ public class AchievementController {
         return ResponseEntity.ok(ApiResponse.success(null, "删除收藏夹成功"));
     }
 
+    @GetMapping("/folders/{folderId}/items")
+    @Operation(summary = "列出指定收藏夹内的成就")
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> listByFolder(
+            @PathVariable String folderId,
+            @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        java.util.List<AchievementDto> list = service.listByFolder(folderId);
+        int total = list.size();
+        int from = Math.max(0, (pageNum - 1) * pageSize);
+        int to = Math.min(total, from + pageSize);
+        java.util.List<AchievementDto> items = from < to ? list.subList(from, to) : java.util.List.of();
+        com.academic.achievement.dto.PageResult<AchievementDto> page = new com.academic.achievement.dto.PageResult<>(total, items);
+        return ResponseEntity.ok(ApiResponse.success(page));
+    }
+
     @GetMapping("/collections")
     @Operation(summary = "列出所有收藏夹")
-    public ResponseEntity<ApiResponse<java.util.List<CollectionFolderDto>>> listCollections() {
-        return ResponseEntity.ok(ApiResponse.success(service.listCollections()));
+    public ResponseEntity<ApiResponse<java.util.List<CollectionFolderDto>>> listCollections(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
+        return ResponseEntity.ok(ApiResponse.success(service.listCollections(userIdHeader)));
     }
 
     // 检索与筛选
@@ -245,6 +283,8 @@ public class AchievementController {
                         .bodyValue(body)
                         .retrieve()
                         .toBodilessEntity()
+                        .doOnError(e -> log.debug("analytics-service call failed: {}", e.toString()))
+                        .onErrorResume(e -> reactor.core.publisher.Mono.empty())
                         .subscribe();
             }
         } catch (Exception ignore) {
@@ -314,5 +354,20 @@ public class AchievementController {
         out.put("isDev", String.valueOf(envConfig.isDev()));
         out.put("isProd", String.valueOf(envConfig.isProd()));
         return ResponseEntity.ok(ApiResponse.success(out));
+    }
+
+    @GetMapping("/review")
+    @Operation(summary = "返回所有审核中的成果")
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.PageResult<AchievementDto>>> getReviews(
+            @RequestHeader(name = "X-User-Id") String userIdHeader,
+            @RequestParam(name = "pageNum", required = false, defaultValue = "1") int pageNum,
+            @RequestParam(name = "pageSize", required = false, defaultValue = "10") int pageSize) {
+        java.util.List<AchievementDto> list = service.getReviews(userIdHeader).block();
+        int total = list.size();
+        int from = Math.max(0, (pageNum - 1) * pageSize);
+        int to = Math.min(total, from + pageSize);
+        java.util.List<AchievementDto> items = from < to ? list.subList(from, to) : java.util.List.of();
+        com.academic.achievement.dto.PageResult<AchievementDto> page = new com.academic.achievement.dto.PageResult<>(total, items);
+        return ResponseEntity.ok(ApiResponse.success(page));
     }
 }

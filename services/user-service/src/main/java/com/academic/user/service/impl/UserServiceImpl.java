@@ -18,7 +18,7 @@ import com.academic.user.common.Role;
 import com.academic.user.common.Secure;
 import com.academic.user.common.ServiceError;
 import com.academic.user.common.TokenEntry;
-import com.academic.user.dto.User;
+import com.academic.user.dto.service.User;
 import com.academic.user.mapper.UserMapper;
 import com.academic.user.service.UserService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -65,7 +65,7 @@ public class UserServiceImpl implements UserService {
     public User login(User requestUser) throws Exception {
         // Use injected mapper directly. add(...) returns int rows affected.
         User user = userMapper.selectOneByUserName(requestUser.getUsername());
-        if (!user.getPasswordHash().equals(requestUser.getPasswordHash())) {
+        if (user == null || !user.getPasswordHash().equals(requestUser.getPasswordHash())) {
             throw new ServiceError("用户名或密码错误", 0);
         }
         return user;
@@ -87,6 +87,15 @@ public class UserServiceImpl implements UserService {
             throw new ServiceError("用户不存在", 0);
         }
         return user;
+    }
+
+    @Override
+    public User getByUsername(String username) throws ServiceError {
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+        User user = userMapper.selectOneByUserName(username);
+        return user; // may be null if not found
     }
 
     @Override
@@ -155,7 +164,7 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new ServiceError("用户不存在", 0);
         }
-        user.setPasswordHash(Secure.sha256(newPasswordHash));
+        user.setPasswordHash(newPasswordHash);
         user.setUpdatedAt(LocalDateTime.now());
         int r = userMapper.updateUser(user);
         if (r == 0) {

@@ -20,6 +20,7 @@ function Exec($cmd) {
     return $LASTEXITCODE
 }
 
+# 前置检查
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Write-Error "docker CLI not found. Please install docker."
     exit 2
@@ -29,6 +30,49 @@ $contexts = docker context ls --format '{{.Name}}' 2>$null
 if (-not ($contexts -match "^$Context$")) {
     Write-Error "Docker context '$Context' not found."
     exit 3
+}
+
+# 尝试获取 context 详细信息并检查是否为 ssh 类型，若是则做额外的连通性/认证诊断
+try {
+    $ctxRaw = & docker context inspect $Context --format '{{json .}}' 2>$null
+    if ($ctxRaw) {
+        try {
+            $ctx = $ctxRaw | ConvertFrom-Json
+            if ($ctx.Endpoints -and $ctx.Endpoints.ssh) {
+                $sshHost = $ctx.Endpoints.ssh.Host
+                $sshUser = $ctx.Endpoints.ssh.User
+                Write-Host "Detected docker context '$Context' using SSH endpoint: $sshUser@$sshHost" -ForegroundColor Yellow
+                # 检查网络连通性（PowerShell 环境下）
+                try {
+                    $tnc = Test-NetConnection -ComputerName $sshHost -Port 22 -WarningAction SilentlyContinue
+                    if ($tnc.TcpTestSucceeded) {
+                        Write-Host "TCP 22 to $sshHost OK" -ForegroundColor Green
+                    } else {
+                        Write-Warning "TCP 22 to $sshHost failed: $($tnc)"
+                    }
+                } catch {
+                    Write-Warning "Test-NetConnection failed: $_"
+                }
+
+                # 如果本机有 ssh 客户端，尝试快速认证测试（BatchMode 避免交互式密码）
+                if (Get-Command ssh -ErrorAction SilentlyContinue) {
+                    try {
+                        Write-Host "Attempting non-interactive SSH test to $sshUser@$sshHost..." -ForegroundColor Cyan
+                        $sshTest = & ssh -o BatchMode=yes -o ConnectTimeout=10 ($sshUser + "@" + $sshHost) echo OK 2>&1
+                        Write-Host "SSH test output: $sshTest"
+                    } catch {
+                        Write-Warning "SSH test failed: $_"
+                    }
+                } else {
+                    Write-Warning "ssh client not found locally; skipping quick auth test."
+                }
+            }
+        } catch {
+            Write-Warning "Failed to parse docker context inspect output: $_"
+        }
+    }
+} catch {
+    Write-Warning "Failed to inspect docker context '$Context': $_"
 }
 
 try {

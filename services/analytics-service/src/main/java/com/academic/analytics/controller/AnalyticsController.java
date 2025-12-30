@@ -17,6 +17,8 @@ import com.academic.analytics.dto.ReportExportRequest;
 import com.academic.analytics.dto.ReportExportResponse;
 import com.academic.analytics.service.AnalyticsService;
 
+import io.swagger.v3.oas.annotations.Operation;
+
 @RestController
 @RequestMapping("/api/analysis")
 public class AnalyticsController {
@@ -28,6 +30,7 @@ public class AnalyticsController {
     }
 
     @PostMapping("/collect-search")
+    @Operation(summary = "记录搜索关键词")
     public ResponseEntity<ApiResponse<Object>> collectSearch(@RequestBody(required = false) java.util.Map<String, String> body) {
         if (body == null || !body.containsKey("term")) {
             return ResponseEntity.badRequest().body(new ApiResponse<>("missing term"));
@@ -42,6 +45,7 @@ public class AnalyticsController {
     }
 
     @PostMapping("/author-relationship")
+    @Operation(summary = "收集并合并用户与作者关系")
     public ResponseEntity<ApiResponse<Object>> authorRelationship(@RequestBody(required = false) java.util.Map<String, String> body) {
         if (body == null || !body.containsKey("userId")) {
             return ResponseEntity.badRequest().body(new ApiResponse<>("missing userId"));
@@ -57,6 +61,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/return-relationship/{userId}")
+    @Operation(summary = "返回指定用户的作者关系字符串")
     public ResponseEntity<ApiResponse<Object>> returnRelationship(@PathVariable(name = "userId") String userId) {
         if (userId == null || userId.isBlank()) {
             return ResponseEntity.badRequest().body(new ApiResponse<>("missing userId"));
@@ -70,12 +75,14 @@ public class AnalyticsController {
     }
 
     @GetMapping("/hot-topics")
+    @Operation(summary = "获取热门话题列表")
     public ResponseEntity<ApiResponse<HotTopicsResponse>> hotTopics(@RequestBody(required = false) HotTopicsRequest request) {
         HotTopicsResponse resp = service.hotTopics(request == null ? new HotTopicsRequest() : request);
         return ResponseEntity.ok(new ApiResponse<>(resp));
     }
 
     @GetMapping("/report/{reportId}")
+    @Operation(summary = "获取指定报告的导出信息（URL/过期时间）")
     public ResponseEntity<ApiResponse<ReportExportResponse>> report(@PathVariable String reportId,
             @RequestBody(required = false) ReportExportRequest request) {
         ReportExportResponse resp = service.getReport(reportId, request == null ? new ReportExportRequest() : request);
@@ -83,6 +90,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/achievements")
+    @Operation(summary = "获取成就统计信息")
     public ResponseEntity<ApiResponse<AchievementsStatsResponse>> achievements(@RequestBody(required = false) AchievementsStatsRequest request) {
         AchievementsStatsResponse resp = service.achievementsStats(request == null ? new AchievementsStatsRequest() : request);
         return ResponseEntity.ok(new ApiResponse<>(resp));

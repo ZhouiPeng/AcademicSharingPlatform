@@ -1,6 +1,8 @@
 spring:
   application:
     name: achievement-service
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
   datasource:
     url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_ACHIEVE_DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
     username: ${MYSQL_USER}
@@ -12,10 +14,10 @@ spring:
     show-sql: false
     properties:
       hibernate.format_sql: true
-  data:
-    redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+  # data:
+  #   redis:
+  #     host: ${REDIS_HOST}
+  #     port: ${REDIS_PORT}
 server:
   port: 8082
 

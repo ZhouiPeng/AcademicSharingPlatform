@@ -5,7 +5,7 @@ import java.security.NoSuchAlgorithmException;
 import org.springframework.stereotype.Service;
 
 import com.academic.user.common.ServiceError;
-import com.academic.user.dto.User;
+import com.academic.user.dto.service.User;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
 @Service
@@ -18,6 +18,8 @@ public interface UserService {
     User getCurrent(String userId) throws ServiceError;
 
     User getById(String userId) throws ServiceError;
+
+    User getByUsername(String username) throws ServiceError;
 
     void updateCurrent(User user) throws ServiceError;
 

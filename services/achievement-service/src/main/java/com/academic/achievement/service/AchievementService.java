@@ -8,8 +8,7 @@ import com.academic.achievement.dto.CollectionFolderDto;
 
 public interface AchievementService {
 
-    String upload(AchievementDto dto);
-
+    String upload(AchievementDto dto, String userRoleHeader);
 
     AchievementDto get(String achId);
 
@@ -19,9 +18,7 @@ public interface AchievementService {
 
     List<AchievementDto> listByAuthor(String authorId);
 
-    String generateDownloadLink(String achId);
-
-    CollectionFolderDto createFolder(CollectionFolderDto dto);
+    CollectionFolderDto createFolder(CollectionFolderDto dto, String ownerId);
 
     void collect(String achId, String folderId);
 
@@ -29,7 +26,7 @@ public interface AchievementService {
 
     void deleteFolder(String folderId);
 
-    List<CollectionFolderDto> listCollections();
+    List<CollectionFolderDto> listCollections(String ownerId);
 
     List<AchievementDto> search(String q);
 
@@ -37,5 +34,11 @@ public interface AchievementService {
 
     List<AchievementDto> listByCategory(String catId);
 
+    List<AchievementDto> listByFolder(String folderId);
+
+    void cite(String achId);
+
     List<AchievementDto> searchWithSort(String sortBy, String order);
+
+    reactor.core.publisher.Mono<java.util.List<AchievementDto>> getReviews(String userIdHeader);
 }

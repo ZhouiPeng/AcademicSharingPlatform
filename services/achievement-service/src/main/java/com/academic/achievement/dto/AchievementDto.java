@@ -15,9 +15,11 @@ public class AchievementDto {
 
     private Integer type; // achievementType
 
-    private List<String> authors;
+    private List<String> authors; // raw author names (storage)
 
     private List<String> categories; // comma separated
+    // presentation-only author view (username + userId)
+    private java.util.List<com.academic.achievement.dto.AuthorView> authorsView;
 
     @JsonProperty("abstract")
     private String abstractText;
@@ -26,6 +28,7 @@ public class AchievementDto {
     private Long createdAt;
     private Long downloadCount;
     private Integer collectCount;
+    private Integer citedCount;
 
     public void setCategories(List<String> categories) {
         this.categories = categories;
@@ -67,12 +70,25 @@ public class AchievementDto {
         this.type = type;
     }
 
+    // internal accessor used by service layer and for deserialization
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public List<String> getAuthors() {
         return authors;
     }
 
+    @com.fasterxml.jackson.annotation.JsonSetter("authors")
     public void setAuthors(List<String> authors) {
         this.authors = authors;
+    }
+
+    // outward-facing authors field: serialized as `authors` in responses
+    @com.fasterxml.jackson.annotation.JsonProperty("authors")
+    public java.util.List<com.academic.achievement.dto.AuthorView> getAuthorsView() {
+        return authorsView;
+    }
+
+    public void setAuthorsView(java.util.List<com.academic.achievement.dto.AuthorView> authorsView) {
+        this.authorsView = authorsView;
     }
 
     public String getAbstractText() {
@@ -113,5 +129,13 @@ public class AchievementDto {
 
     public void setCollectCount(Integer collectCount) {
         this.collectCount = collectCount;
+    }
+
+    public Integer getCitedCount() {
+        return citedCount == null ? 0 : citedCount;
+    }
+
+    public void setCitedCount(Integer citedCount) {
+        this.citedCount = citedCount;
     }
 }

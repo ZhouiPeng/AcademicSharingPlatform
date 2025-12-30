@@ -15,6 +15,7 @@ public class FolderEntity {
     private String id;
     private String name;
     private String description;
+    private String ownerId; // uploader / creator user id
 
     @ManyToMany(mappedBy = "folders")
     private Set<AchievementEntity> achievements = new HashSet<>();
@@ -41,6 +42,14 @@ public class FolderEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public void setOwnerId(String ownerId) {
+        this.ownerId = ownerId;
     }
 
     public Set<AchievementEntity> getAchievements() {
