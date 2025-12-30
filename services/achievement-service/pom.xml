@@ -59,6 +59,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+        <!-- Flyway for database migrations -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <finalName>achievement-service</finalName>
