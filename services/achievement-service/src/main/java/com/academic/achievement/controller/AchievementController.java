@@ -220,8 +220,10 @@ public class AchievementController {
     // 收藏相关
     @PostMapping("/folders")
     @Operation(summary = "创建收藏夹")
-    public ResponseEntity<ApiResponse<com.academic.achievement.dto.FolderIdDto>> createFolder(@RequestBody CollectionFolderDto dto) {
-        CollectionFolderDto created = service.createFolder(dto);
+    public ResponseEntity<ApiResponse<com.academic.achievement.dto.FolderIdDto>> createFolder(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestBody CollectionFolderDto dto) {
+        CollectionFolderDto created = service.createFolder(dto, userIdHeader);
         com.academic.achievement.dto.FolderIdDto out = new com.academic.achievement.dto.FolderIdDto(created.getId());
         return ResponseEntity.status(201).body(ApiResponse.success(out, "创建成功"));
     }
@@ -264,8 +266,9 @@ public class AchievementController {
 
     @GetMapping("/collections")
     @Operation(summary = "列出所有收藏夹")
-    public ResponseEntity<ApiResponse<java.util.List<CollectionFolderDto>>> listCollections() {
-        return ResponseEntity.ok(ApiResponse.success(service.listCollections()));
+    public ResponseEntity<ApiResponse<java.util.List<CollectionFolderDto>>> listCollections(
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader) {
+        return ResponseEntity.ok(ApiResponse.success(service.listCollections(userIdHeader)));
     }
 
     // 检索与筛选

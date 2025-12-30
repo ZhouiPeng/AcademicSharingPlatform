@@ -18,7 +18,6 @@ public interface AchievementService {
 
     List<AchievementDto> listByAuthor(String authorId);
 
-    CollectionFolderDto createFolder(CollectionFolderDto dto);
 
     void collect(String achId, String folderId);
 
@@ -26,7 +25,9 @@ public interface AchievementService {
 
     void deleteFolder(String folderId);
 
-    List<CollectionFolderDto> listCollections();
+    CollectionFolderDto createFolder(CollectionFolderDto dto, String ownerId);
+
+    List<CollectionFolderDto> listCollections(String ownerId);
 
     List<AchievementDto> search(String q);
 

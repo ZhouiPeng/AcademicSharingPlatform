@@ -162,7 +162,7 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public CollectionFolderDto createFolder(CollectionFolderDto dto) {
+    public CollectionFolderDto createFolder(CollectionFolderDto dto, String ownerId) {
         FolderEntity f = new FolderEntity();
         if (dto.getId() == null || dto.getId().isEmpty()) {
             f.setId("folder-" + System.currentTimeMillis());
@@ -171,6 +171,9 @@ public class AchievementServiceImpl implements AchievementService {
         }
         f.setName(dto.getName());
         f.setDescription(dto.getDescription());
+        if (ownerId != null && !ownerId.isBlank()) {
+            f.setOwnerId(ownerId);
+        }
         FolderEntity saved = folderRepository.save(f);
         CollectionFolderDto out = new CollectionFolderDto();
         out.setId(saved.getId());
@@ -235,8 +238,15 @@ public class AchievementServiceImpl implements AchievementService {
     }
 
     @Override
-    public List<CollectionFolderDto> listCollections() {
-        return folderRepository.findAll().stream().map(f -> {
+    public List<CollectionFolderDto> listCollections(String ownerId) {
+        java.util.List<FolderEntity> folders;
+        if (ownerId == null || ownerId.isBlank()) {
+            // if ownerId is not provided, return empty list for safety
+            folders = java.util.Collections.emptyList();
+        } else {
+            folders = folderRepository.findByOwnerId(ownerId);
+        }
+        return folders.stream().map(f -> {
             CollectionFolderDto dto = new CollectionFolderDto();
             dto.setId(f.getId());
             dto.setName(f.getName());
