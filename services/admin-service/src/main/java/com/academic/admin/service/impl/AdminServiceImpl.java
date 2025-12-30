@@ -5,7 +5,9 @@ import com.academic.admin.entity.Message;
 import com.academic.admin.entity.UserMessageState;
 import com.academic.admin.repository.MessageRepository;
 import com.academic.admin.repository.UserMessageStateRepository;
+import com.academic.admin.repository.AchievementRepository;
 import com.academic.admin.service.AdminService;
+import com.academic.admin.entity.AchievementEntity;
 import com.academic.admin.entity.AuthRequestEntity;
 import com.academic.admin.repository.AuthRequestRepository;
 import com.academic.admin.entity.ReportEntity;
@@ -34,16 +36,19 @@ public class AdminServiceImpl implements AdminService {
     private final UserMessageStateRepository stateRepository;
     private final WebClient userWebClient;
     private final AuthRequestRepository authRequestRepository;
+    private final AchievementRepository achievementRepository;
     private final ReportRepository reportRepository;
 
     public AdminServiceImpl(MessageRepository messageRepository,
             UserMessageStateRepository stateRepository,
             AuthRequestRepository authRequestRepository,
+            AchievementRepository achievementRepository,
             ReportRepository reportRepository,
             @Value("http://user-service:8081") String userServiceUrl) {
         this.messageRepository = messageRepository;
         this.stateRepository = stateRepository;
         this.authRequestRepository = authRequestRepository;
+        this.achievementRepository = achievementRepository;
         this.reportRepository = reportRepository;
         this.userWebClient = WebClient.builder().baseUrl(userServiceUrl).build();
     }
@@ -362,5 +367,91 @@ public class AdminServiceImpl implements AdminService {
             res.add(dto);
         }
         return res;
+    }
+
+    @Override
+    public Mono<String> applyAchievement(String userId, String achievementId) {
+        String status = "PENDING";
+        return assignedAdmin()
+                .switchIfEmpty(Mono.error(new IllegalStateException("no assigned admin found")))
+                .flatMap(assignedAdmin -> {
+                    AchievementEntity r = AchievementEntity.builder()
+                        .id(UUID.randomUUID().toString())
+                        .proceedingAdminId(assignedAdmin)
+                        .userId(userId)
+                        .achievementId(achievementId)
+                        .status(status)
+                        .build();
+
+                    return Mono.fromCallable(() -> achievementRepository.save(r))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .flatMap(saved -> {
+                                SendInfoRequest info = new SendInfoRequest();
+                                info.setTargetGroup(assignedAdmin);
+                                info.setTitle("成果上传审核通知");
+                                info.setContent("用户(" + userId + ")申请审核成果(" + achievementId + ")");
+                                return sendInformation(info).then(Mono.just(status));
+                            });
+                });
+    }
+
+    @Override
+    public List<AchievementDto> getAchievementReview(String userId) {
+        List<AchievementEntity> ents = achievementRepository.findByProceedingAdminIdOrderByCreatedAtDesc(userId);
+        if (ents == null || ents.isEmpty()) {
+            throw new IllegalStateException("no achievements found" + userId);
+        }
+        List<AchievementDto> res = new ArrayList<>(ents.size());
+        for (AchievementEntity e : ents) {
+            String st = e.getStatus();
+            if (st == null || !"PENDING".equalsIgnoreCase(st)) {
+                continue;
+            }
+            AchievementDto d = AchievementDto.builder()
+                    .achievementId(e.getAchievementId())
+                    .createdAt(e.getCreatedAt().toString())
+                    .build();
+            res.add(d);
+        }
+        return res;
+    }
+
+    @Override
+    public List<AchievementDto> getAchievement(String userId) {
+        List<AchievementEntity> ents = achievementRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (ents == null || ents.isEmpty()) {
+            throw new IllegalStateException("no achievements found" + userId);
+        }
+        List<AchievementDto> res = new ArrayList<>(ents.size());
+        for (AchievementEntity e : ents) {
+            AchievementDto d = AchievementDto.builder()
+                    .achievementId(e.getAchievementId())
+                    .createdAt(e.getCreatedAt().toString())
+                    .build();
+            res.add(d);
+        }
+        return res;
+    }
+
+    @Override
+    public String processAchievement(String formId, ProcessRequest req) {
+        AchievementEntity ent = achievementRepository.findById(formId).orElseThrow(() -> new IllegalStateException("achievement form not found: " + formId));
+        ent.setStatus(req.getStatus());
+        achievementRepository.save(ent);
+
+        SendInfoRequest info = new SendInfoRequest();
+        info.setTargetGroup(ent.getUserId());
+        info.setTitle("成果审核处理结果通知");
+        info.setContent("审核结果: " + req.getStatus() + "\n备注: " + req.getRemarks());
+        sendInformation(info).subscribe();
+
+        return req.getStatus();
+    }
+
+    @Override
+    public String checkAchievement(String achievementId) {
+        AchievementEntity ent = achievementRepository.findById(achievementId).orElse(null);
+        if (ent != null && ent.getStatus().equals("PENDING")) return "PENDING";
+        return null;
     }
 }

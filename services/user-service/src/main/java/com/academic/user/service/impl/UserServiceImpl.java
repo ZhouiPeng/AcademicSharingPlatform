@@ -246,4 +246,24 @@ public class UserServiceImpl implements UserService {
     public int getUsersNum() {
         return userMapper.count();
     }
+
+    @Override
+    public void setRole(String userId, String role) throws ServiceError {
+        User user = userMapper.selectOneByUserId(userId);
+        if (user == null) {
+            throw new ServiceError("用户不存在", 0);
+        }
+        if (role.equals(Role.ADMIN.toString())) {
+            user.setRole(Role.ADMIN);
+        } else if (role.equals(Role.NORMAL.toString())) {
+            user.setRole(Role.NORMAL);
+        } else {
+            throw new ServiceError("角色不存在", 0);
+        }
+        user.setUpdatedAt(LocalDateTime.now());
+        int r = userMapper.updateUser(user);
+        if (r == 0) {
+            throw new ServiceError("修改失败", 0);
+        }
+    }
 }

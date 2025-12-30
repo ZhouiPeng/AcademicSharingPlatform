@@ -16,6 +16,10 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import reactor.core.publisher.Mono;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
+
 
 @Validated
 @RestController
@@ -114,5 +118,42 @@ public class AdminController {
     @Operation(summary = "获取系统消息列表")
     public ResponseEntity<ApiResponse<List<InformationDto>>> getInformation(@RequestHeader(name = "X-User-Id") String userIdHeader) {
         return ResponseEntity.ok(ApiResponse.success(adminService.getInformation(userIdHeader)));
+    }
+
+    @PostMapping("/achievement")
+    @Operation(summary = "申请审核成果（微服务间通信，前端不需调用)")
+    public Mono<ResponseEntity<ApiResponse<Map<String, String>>>> applyAchievement(
+        @RequestHeader(name = "X-User-Id") String userIdHeader,
+        @RequestBody @Valid AchievementRequest req) {
+        return adminService.applyAchievement(userIdHeader, req.getAchievementId())
+                .map(status -> ResponseEntity.status(201).body(ApiResponse.success(Map.of("status", status))));
+    }
+
+    @GetMapping("/achievement")
+    @Operation(summary = "获取待审核成果列表")
+    public ResponseEntity<ApiResponse<List<AchievementDto>>> getAchievement(
+        @RequestHeader(name = "X-User-Id") String userIdHeader,
+        @RequestHeader(name = "X-User-Role") String userRoleHeader) {
+        if (!userRoleHeader.equals("ADMIN")) {
+            return ResponseEntity.ok(ApiResponse.success(adminService.getAchievementReview(userIdHeader)));
+        } else {
+            return ResponseEntity.ok(ApiResponse.success(adminService.getAchievement(userIdHeader)));
+        }
+        
+    }
+
+    @GetMapping("/achievement/check")
+    @Operation(summary = "查看成果状态")
+    public ResponseEntity<ApiResponse<Map<String, String>>> checkAchievement(@RequestBody @Valid AchievementRequest req) {
+        return ResponseEntity.ok(ApiResponse.success(Map.of("status", adminService.checkAchievement(req.getAchievementId()))));
+    }
+
+    @PutMapping("/achievement/{achievementId}")
+    @Operation(summary = "处理成果审核")
+    public ResponseEntity<ApiResponse<Map<String, String>>> processAchievement(
+            @PathVariable @NotBlank String achievementId,
+            @RequestBody @Valid ProcessRequest req) {
+        String status = adminService.processAchievement(achievementId, req);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("status", status)));
     }
 }

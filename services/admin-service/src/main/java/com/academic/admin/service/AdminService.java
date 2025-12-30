@@ -17,4 +17,9 @@ public interface AdminService {
     void deleteInformation(String req);
     void deletePersonalInformation(String userId, String id);
     List<InformationDto> getInformation(String userId);
+    Mono<String> applyAchievement(String userId, String achievementId);
+    List<AchievementDto> getAchievementReview(String userId);
+    List<AchievementDto> getAchievement(String userId);
+    String processAchievement(String formId, ProcessRequest req);
+    String checkAchievement(String achievementId);
 }

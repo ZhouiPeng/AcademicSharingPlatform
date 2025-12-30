@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import com.academic.user.common.*;
 import com.academic.user.dto.request.RegisterRequestModel;
+import com.academic.user.dto.request.SetRoleRequest;
 import com.academic.user.dto.response.LoginResponseModel;
 import com.academic.user.dto.response.TotalResponseModel;
 import com.academic.user.dto.response.VerificationResponseModel;
@@ -158,10 +159,10 @@ public class UserController {
         VerificationResponseModel verificationResponseModel = new VerificationResponseModel();
         try {
             if (userIdHeader != null && !userIdHeader.isEmpty()) {
-                String validateId = userService.generateVerificationCode(userIdHeader, null);
-                verificationResponseModel.setValidateId(validateId);
+                userService.generateVerificationCode(userIdHeader, null);
+                verificationResponseModel.setValidateId(userIdHeader);
                 return ResponseEntity.ok().body(
-                        apiResponse.success("验证码已发送，请检查邮箱", verificationResponseModel));
+                        apiResponse.success("验证码已发送，请检查邮箱", null));
             }
             else if(requestBody == null) {
                 return ResponseEntity.badRequest().body(
@@ -191,14 +192,14 @@ public class UserController {
     }
 
     //重置密码验证验证码
-    @PostMapping("/password/reset/{validateId}")
+    @PostMapping("/password/reset")
     @ResponseBody
     public ResponseEntity<ApiResponse<Object>> resetPassword(
             @RequestHeader(name = "X-User-Id") String userIdHeader,
             @PathVariable String validateId, @RequestBody Map<String, String> requestBody) {
         ApiResponse<Object> apiResponse = new ApiResponse<>();
         try {
-            userService.validateVerificationCode(validateId, requestBody.get("code"));
+            userService.validateVerificationCode(userIdHeader, requestBody.get("code"));
             userService.resetPassword(userIdHeader, requestBody.get("password"));
             return ResponseEntity.ok().body(
                     apiResponse.success("修改成功", null));
@@ -339,6 +340,28 @@ public class UserController {
             TotalResponseModel totalResponseModel = new TotalResponseModel(num);
             return ResponseEntity.ok().body(
                     apiResponse.success("获取成功", totalResponseModel));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(
+                    apiResponse.fail(ResultCode.UNKNOWN_ERROR, "服务器繁忙"));
+        }
+    }
+
+    @GetMapping("/users/setRole/{userId}")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<TotalResponseModel>> setRole(
+        @RequestHeader(name = "X-User-Role") String userRoleHeader,
+        @PathVariable String userId,
+        @RequestBody SetRoleRequest setRoleRequest) {
+        ApiResponse<TotalResponseModel> apiResponse = new ApiResponse<>();
+        if (!userRoleHeader.equals("ADMIN")) {
+            return ResponseEntity.status(403).body(
+                    apiResponse.fail(ResultCode.PERMISSION_DENYED, "权限不足"));
+        }
+        try {
+            userService.setRole(userId, setRoleRequest.getRole());
+            return ResponseEntity.ok().body(
+                    apiResponse.success("获取成功", null));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(

@@ -40,4 +40,6 @@ public interface UserService {
     IPage<User> getUsersByRole(int pageNum, int pageSize, String role) throws ServiceError;
 
     int getUsersNum();
+
+    void setRole(String userId, String role) throws ServiceError;
 }
