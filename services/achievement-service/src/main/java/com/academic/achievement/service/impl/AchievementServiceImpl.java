@@ -547,6 +547,55 @@ public class AchievementServiceImpl implements AchievementService {
         return true;
     }
 
+    private boolean matchTitle(AchievementEntity entity, String title) {
+        if (title == null || title.isEmpty()) return true;
+        return containsIgnoreCase(entity.getTitle(), title.toLowerCase());
+    }
+
+    private boolean matchUserId(AchievementEntity entity, String userId) {
+        if (userId == null || userId.isEmpty()) return true;
+        String authorId = entity.getAuthorId();
+        return authorId != null && authorId.equals(userId);
+    }
+
+    private boolean matchFileId(AchievementEntity entity, String fileId) {
+        if (fileId == null || fileId.isEmpty()) return true;
+        String fid = entity.getFileId();
+        return fid != null && fid.equals(fileId);
+    }
+
+    private boolean matchType(AchievementEntity entity, Integer type) {
+        if (type == null) return true;
+        Integer t = entity.getType();
+        return t != null && t.equals(type);
+    }
+
+    private boolean matchAuthorsList(AchievementEntity entity, java.util.List<String> authors) {
+        if (authors == null || authors.isEmpty()) return true;
+        if (entity.getAuthors() == null || entity.getAuthors().isEmpty()) return false;
+        java.util.Set<String> existing = java.util.Arrays.stream(entity.getAuthors().split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
+        for (String a : authors) {
+            if (existing.contains(a)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean matchCategoriesList(AchievementEntity entity, java.util.List<String> categories) {
+        if (categories == null || categories.isEmpty()) return true;
+        if (entity.getCategories() == null || entity.getCategories().isEmpty()) return false;
+        java.util.Set<String> existing = java.util.Arrays.stream(entity.getCategories().split("\\s*,\\s*"))
+                .map(String::trim).filter(s -> !s.isEmpty()).collect(java.util.stream.Collectors.toSet());
+        for (String c : categories) {
+            if (!existing.contains(c)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private Integer extractYear(Long epochMillis) {
         try {
             return Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).getYear();
